@@ -188,7 +188,7 @@
     <header>
       <h1>iPAS AI 應用規劃師（初級）</h1>
       <div class="nav-tabs">
-        <button id="btn-quiz-mode" class="active" onclick="switchMode('quiz')">順序測驗</button>
+        <button id="btn-quiz-mode" class="active" onclick="switchMode('quiz')">隨機考卷</button>
         <button id="btn-wrong-mode" onclick="switchMode('wrong')">錯題本 (<span id="wrong-count">0</span>)</button>
       </div>
     </header>
@@ -200,6 +200,7 @@
     </div>
 
     <div id="quiz-section">
+      <p style="font-size:.9rem;color:#475569;">題庫 60 題。每份隨機抽 30 題（兩科各 15 題），每次重新抽選與排序；練習題並非官方試題。</p>
       <div class="card">
         <span class="badge" id="q-category">考科一：人工智慧基礎概論</span>
         <div class="question-title" id="q-text">載入題目中...</div>
@@ -209,9 +210,10 @@
       </div>
       <div class="actions">
         <button class="action-btn" id="btn-prev" onclick="navigate(-1)">上一題</button>
-        <span id="q-index" style="align-self: center; font-weight: 600;">1 / 10</span>
+        <span id="q-index" style="align-self: center; font-weight: 600;"></span>
         <button class="action-btn" id="btn-next" onclick="navigate(1)">下一題</button>
       </div>
+      <div id="exam-result" class="card" style="display:none; margin-top:16px;"></div>
     </div>
 
     <div id="wrong-section" style="display: none;">
@@ -222,6 +224,7 @@
     </div>
   </div>
 
+  <script src="questions-extra.js"></script>
   <script>
     const questions = [
       {
@@ -351,9 +354,42 @@
       }
     ];
 
+    questions.push(...extraQuestions);
+    const PAPER_SIZE = 30;
+    const shuffle = items => {
+      const result = [...items];
+      for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    };
+    let paper = [];
+    let answers = {};
     let currentIndex = 0;
+    let examFinished = false;
     let mode = 'quiz';
-    let wrongBook = JSON.parse(localStorage.getItem('ipas_wrong_book') || '{}');
+    let wrongBook;
+    try { wrongBook = JSON.parse(localStorage.getItem('ipas_wrong_book') || '{}'); }
+    catch { wrongBook = {}; }
+    if (!wrongBook || Array.isArray(wrongBook) || typeof wrongBook !== 'object') wrongBook = {};
+
+    function startExam() {
+      // 每張考卷從兩科各抽 15 題，再打亂整張考卷；已出過的題仍會參與下次抽選。
+      const first = shuffle(questions.filter(q => !q.category.startsWith('考科二'))).slice(0, PAPER_SIZE / 2);
+      const second = shuffle(questions.filter(q => q.category.startsWith('考科二'))).slice(0, PAPER_SIZE / 2);
+      paper = shuffle([...first, ...second]).map(q => {
+        const order = shuffle([0, 1, 2, 3]);
+        return { ...q, options: order.map(i => q.options[i]), answer: order.indexOf(q.answer) };
+      });
+      answers = {};
+      currentIndex = 0;
+      examFinished = false;
+      document.getElementById('exam-result').style.display = 'none';
+      document.getElementById('quiz-section').querySelector('.card').style.display = 'block';
+      document.querySelector('#quiz-section .actions').style.display = 'flex';
+      renderQuestion();
+    }
 
     function saveGasUrl() {
       const url = document.getElementById('gas-url').value.trim();
@@ -371,10 +407,10 @@
     }
 
     function renderQuestion() {
-      const q = questions[currentIndex];
+      const q = paper[currentIndex];
       document.getElementById('q-category').textContent = q.category;
-      document.getElementById('q-text').textContent = `第 ${q.id} 題｜${q.question}`;
-      document.getElementById('q-index').textContent = `${currentIndex + 1} / ${questions.length}`;
+      document.getElementById('q-text').textContent = q.question;
+      document.getElementById('q-index').textContent = `${currentIndex + 1} / ${paper.length}`;
       
       const optionsContainer = document.getElementById('q-options');
       const explanationEl = document.getElementById('q-explanation');
@@ -389,16 +425,28 @@
         btn.className = 'option-btn';
         btn.textContent = `(${letters[idx]}) ${opt}`;
         btn.onclick = () => checkAnswer(idx);
+        if (answers[q.id] !== undefined) {
+          btn.disabled = true;
+          if (idx === q.answer) btn.classList.add('correct');
+          else if (idx === answers[q.id]) btn.classList.add('wrong');
+        }
         optionsContainer.appendChild(btn);
       });
 
+      if (answers[q.id] !== undefined) {
+        explanationEl.textContent = `正確答案：${letters[q.answer]}。考點解析：${q.explanation}`;
+        explanationEl.style.display = 'block';
+      }
       document.getElementById('btn-prev').disabled = currentIndex === 0;
-      document.getElementById('btn-next').disabled = currentIndex === questions.length - 1;
+      document.getElementById('btn-next').disabled = answers[q.id] === undefined;
+      document.getElementById('btn-next').textContent = currentIndex === paper.length - 1 ? '完成考卷' : '下一題';
       updateWrongBadge();
     }
 
     function checkAnswer(selectedIdx) {
-      const q = questions[currentIndex];
+      const q = paper[currentIndex];
+      if (answers[q.id] !== undefined || examFinished) return;
+      answers[q.id] = selectedIdx;
       const buttons = document.querySelectorAll('.option-btn');
       buttons.forEach(b => b.disabled = true);
 
@@ -423,12 +471,9 @@
       localStorage.setItem('ipas_wrong_book', JSON.stringify(wrongBook));
       updateWrongBadge();
 
-      explanationEl.innerHTML = `
-        <strong>${isCorrect ? '✅ 答對了！' : '❌ 答錯了！'}</strong><br>
-        <strong>正確答案：</strong>(${['A','B','C','D'][q.answer]})<br>
-        <strong>考點解析：</strong>${q.explanation}
-      `;
+      explanationEl.textContent = `${isCorrect ? '✅ 答對了！' : '❌ 答錯了！'} 正確答案：${['A','B','C','D'][q.answer]}。考點解析：${q.explanation}`;
       explanationEl.style.display = 'block';
+      document.getElementById('btn-next').disabled = false;
 
       const gasUrl = localStorage.getItem('ipas_gas_url');
       if (gasUrl) {
@@ -438,7 +483,7 @@
           mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            subject: '考科一',
+            subject: q.category.startsWith('考科二') ? '考科二' : '考科一',
             qId: q.id,
             category: q.category,
             question: q.question,
@@ -448,7 +493,7 @@
             explanation: q.explanation
           })
         }).then(() => {
-          syncStatusEl.textContent = '✅ 已成功同步寫入試算表！';
+          syncStatusEl.textContent = '📨 已送出寫入請求；請到試算表確認紀錄。';
         }).catch(err => {
           syncStatusEl.textContent = '⚠️ 寫入失敗，請確認後台網址。';
         });
@@ -456,8 +501,32 @@
     }
 
     function navigate(delta) {
+      if (delta > 0 && currentIndex === paper.length - 1) {
+        finishExam();
+        return;
+      }
       currentIndex += delta;
       renderQuestion();
+    }
+
+    function finishExam() {
+      if (Object.keys(answers).length !== paper.length) return;
+      examFinished = true;
+      const score = paper.filter(q => answers[q.id] === q.answer).length;
+      document.getElementById('quiz-section').querySelector('.card').style.display = 'none';
+      document.querySelector('#quiz-section .actions').style.display = 'none';
+      const result = document.getElementById('exam-result');
+      result.replaceChildren();
+      const heading = document.createElement('h2');
+      heading.textContent = `本次完成 ${paper.length} 題，答對 ${score} 題`;
+      const note = document.createElement('p');
+      note.textContent = '下一份考卷會重新抽題、重新排序；舊題仍可能出現。';
+      const button = document.createElement('button');
+      button.className = 'action-btn';
+      button.textContent = '開始新考卷';
+      button.addEventListener('click', startExam);
+      result.append(heading, note, button);
+      result.style.display = 'block';
     }
 
     function switchMode(newMode) {
@@ -468,7 +537,7 @@
       if (mode === 'quiz') {
         document.getElementById('quiz-section').style.display = 'block';
         document.getElementById('wrong-section').style.display = 'none';
-        renderQuestion();
+        if (!examFinished) renderQuestion();
       } else {
         document.getElementById('quiz-section').style.display = 'none';
         document.getElementById('wrong-section').style.display = 'block';
@@ -510,7 +579,7 @@
     }
 
     initGasUrl();
-    renderQuestion();
+    startExam();
   </script>
 </body>
 </html>
