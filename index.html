@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>iPAS AI 應用規劃師 - 互動測驗系統</title>
+  <link rel="apple-touch-icon" href="icon.png">
   <style>
     :root {
       --bg: #f8fafc;
@@ -18,7 +19,7 @@
       --radius: 12px;
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       line-height: 1.6;
@@ -26,7 +27,7 @@
       padding: 16px;
     }
     .container {
-      max-width: 800px;
+      max-width: 760px;
       margin: 0 auto;
     }
     header {
@@ -36,14 +37,11 @@
       margin-bottom: 16px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--border);
-      flex-wrap: wrap;
-      gap: 12px;
     }
     h1 {
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       margin: 0;
       font-weight: 700;
-      color: #1e293b;
     }
     .config-box {
       background: #f1f5f9;
@@ -52,51 +50,25 @@
       padding: 12px 16px;
       margin-bottom: 16px;
       font-size: 0.85rem;
-      position: relative;
-    }
-    .config-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 6px;
-      align-items: center;
     }
     .config-box input {
-      flex: 1;
-      padding: 8px 12px;
+      width: calc(100% - 100px);
+      padding: 6px 10px;
       border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 0.85rem;
-      outline: none;
-      box-sizing: border-box;
-    }
-    .config-box input:focus {
-      border-color: var(--primary);
     }
     .config-box button {
-      padding: 8px 14px;
+      padding: 6px 12px;
       background: var(--primary);
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      font-weight: 600;
-      white-space: nowrap;
-      transition: background 0.2s;
-    }
-    .config-box button:hover {
-      background: var(--primary-hover);
-    }
-    .toast-msg {
-      font-size: 0.8rem;
-      color: var(--success);
-      margin-top: 6px;
-      display: none;
-      font-weight: 600;
     }
     .nav-tabs {
       display: flex;
       gap: 8px;
-      flex-wrap: wrap;
     }
     .nav-tabs button {
       background: white;
@@ -105,8 +77,6 @@
       border-radius: 8px;
       cursor: pointer;
       font-weight: 600;
-      transition: all 0.2s;
-      font-size: 0.9rem;
     }
     .nav-tabs button.active {
       background-color: var(--primary);
@@ -135,7 +105,6 @@
       font-size: 1.15rem;
       font-weight: 600;
       margin-bottom: 20px;
-      line-height: 1.5;
     }
     .options {
       display: flex;
@@ -151,7 +120,6 @@
       font-size: 1rem;
       cursor: pointer;
       transition: all 0.2s;
-      line-height: 1.4;
     }
     .option-btn:hover:not(:disabled) {
       border-color: var(--primary);
@@ -175,7 +143,6 @@
       background: #f8fafc;
       border-left: 4px solid var(--primary);
       display: none;
-      line-height: 1.6;
     }
     .sync-status {
       font-size: 0.8rem;
@@ -186,7 +153,6 @@
       display: flex;
       justify-content: space-between;
       margin-top: 20px;
-      align-items: center;
     }
     .action-btn {
       padding: 10px 20px;
@@ -196,138 +162,24 @@
       border-radius: 8px;
       cursor: pointer;
       font-weight: 600;
-      transition: background 0.2s;
-    }
-    .action-btn:hover:not(:disabled) {
-      background: var(--primary-hover);
     }
     .action-btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
-
-    /* 統計儀表板 Dashboard */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-      gap: 12px;
-      margin-bottom: 20px;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
     }
-    .stat-card {
-      background: #f8fafc;
+    th, td {
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
-      text-align: center;
+      padding: 10px;
+      text-align: left;
+      font-size: 0.85rem;
     }
-    .stat-value {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: var(--primary);
-    }
-    .stat-label {
-      font-size: 0.75rem;
-      color: #64748b;
-      margin-top: 4px;
-      font-weight: 600;
-    }
-
-    /* 錯題卡片設計 */
-    .wrong-card {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 14px;
-      background: #ffffff;
-      transition: border-color 0.2s;
-    }
-    .wrong-card:hover {
-      border-color: #cbd5e1;
-    }
-    .wrong-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .wrong-card-title {
-      font-weight: 600;
-      font-size: 1rem;
-      margin-bottom: 8px;
-      line-height: 1.5;
-    }
-    .wrong-card-details {
-      font-size: 0.9rem;
-      background: #f8fafc;
-      padding: 10px 14px;
-      border-radius: 6px;
-      margin-bottom: 12px;
-      line-height: 1.6;
-    }
-    .wrong-card-stats {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 10px;
-      font-size: 0.8rem;
-      flex-wrap: wrap;
-    }
-    .pill {
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-weight: 600;
-    }
-    .pill.count { background: #f1f5f9; color: #334155; }
-    .pill.rate { background: #eff6ff; color: #1d4ed8; }
-    .pill.correct { background: #dcfce7; color: #166534; }
-    .pill.wrong { background: #fee2e2; color: #991b1b; }
-    .pill.pending { background: #fef3c7; color: #92400e; }
-    .pill.mastered { background: #dcfce7; color: #166534; }
-
-    .wrong-card-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-      flex-wrap: wrap;
-    }
-    .btn-sm {
-      padding: 6px 12px;
-      font-size: 0.8rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-      border: 1px solid var(--border);
-      background: white;
-      transition: all 0.2s;
-    }
-    .btn-sm:hover {
+    th {
       background: #f1f5f9;
-    }
-    .btn-sm.primary {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-    }
-    .btn-sm.primary:hover {
-      background: var(--primary-hover);
-    }
-    .btn-sm.success {
-      background: #dcfce7;
-      color: #166534;
-      border-color: #86efac;
-    }
-    .btn-sm.danger {
-      color: var(--danger);
-    }
-    .btn-sm.danger:hover {
-      background: #fee2e2;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 40px 16px;
-      color: #64748b;
     }
   </style>
 </head>
@@ -336,23 +188,17 @@
     <header>
       <h1>iPAS AI 應用規劃師（初級）</h1>
       <div class="nav-tabs">
-        <button id="btn-quiz-mode" class="active" onclick="switchMode('quiz')">📝 全真順序測驗</button>
-        <button id="btn-wrong-train-mode" onclick="switchMode('wrong-train')">🎯 錯題專項特訓 (<span id="train-count">0</span>)</button>
-        <button id="btn-wrong-list-mode" onclick="switchMode('wrong-list')">📊 錯題本與分析 (<span id="wrong-count">0</span>)</button>
+        <button id="btn-quiz-mode" class="active" onclick="switchMode('quiz')">順序測驗</button>
+        <button id="btn-wrong-mode" onclick="switchMode('wrong')">錯題本 (<span id="wrong-count">0</span>)</button>
       </div>
     </header>
 
-    <!-- 後台試算表 Webhook 設定列 -->
     <div class="config-box">
-      <div><strong>🔗 自動同步試算表：</strong></div>
-      <div class="config-row">
-        <input type="text" id="gas-url" placeholder="貼上 Google Apps Script 網頁應用程式網址 (留空則純本地記錄)">
-        <button onclick="saveGasUrl()">儲存網址</button>
-      </div>
-      <div id="toast-msg" class="toast-msg">✅ 後台網址已儲存！</div>
+      <strong>🔗 自動同步試算表：</strong>
+      <input type="text" id="gas-url" placeholder="貼上 Google Apps Script 網頁應用程式網址 (留空則純本地記錄)">
+      <button onclick="saveGasUrl()">儲存網址</button>
     </div>
 
-    <!-- 模式 1：全真順序測驗區域 -->
     <div id="quiz-section">
       <div class="card">
         <span class="badge" id="q-category">考科一：人工智慧基礎概論</span>
@@ -368,57 +214,9 @@
       </div>
     </div>
 
-    <!-- 模式 2：錯題專項特訓測驗區域 -->
-    <div id="wrong-train-section" style="display: none;">
+    <div id="wrong-section" style="display: none;">
       <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-          <div>
-            <span class="badge" id="wt-category" style="background:#fef2f2; color:#b91c1c;">🎯 錯題專項特訓</span>
-            <span class="pill rate" id="wt-item-rate">此題勝率：0%</span>
-          </div>
-          <span style="font-size: 0.85rem; color: #64748b;" id="wt-item-stats">已練 0 次 ｜ 對 0 ｜ 錯 0</span>
-        </div>
-        <div class="question-title" id="wt-text">載入錯題中...</div>
-        <div class="options" id="wt-options"></div>
-        <div class="explanation" id="wt-explanation"></div>
-        <div class="sync-status" id="wt-sync-status"></div>
-      </div>
-      <div class="actions">
-        <button class="action-btn" id="wt-btn-prev" onclick="navigateWrongTrain(-1)">上一題</button>
-        <span id="wt-index" style="align-self: center; font-weight: 600;">1 / 1</span>
-        <button class="action-btn" id="wt-btn-next" onclick="navigateWrongTrain(1)">下一題</button>
-      </div>
-    </div>
-
-    <!-- 模式 3：錯題本與完整統計分析區域 -->
-    <div id="wrong-list-section" style="display: none;">
-      <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
-          <h2 style="font-size: 1.15rem; margin: 0;">錯題弱點統計儀表板</h2>
-          <button class="btn-sm primary" onclick="switchMode('wrong-train')">🚀 開始錯題專項特訓</button>
-        </div>
-
-        <!-- 統計數據卡片 -->
-        <div class="dashboard-grid">
-          <div class="stat-card">
-            <div class="stat-value" id="dash-total-wrong">0</div>
-            <div class="stat-label">待複習錯題數</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="dash-total-practice">0</div>
-            <div class="stat-label">累積特訓次數</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="dash-total-correct">0</div>
-            <div class="stat-label">特訓答對次數</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="dash-accuracy">0%</div>
-            <div class="stat-label">特訓平均答對率</div>
-          </div>
-        </div>
-
-        <h3 style="font-size: 1rem; margin-top: 24px; margin-bottom: 12px; color: #334155;">錯題清單與個別勝率</h3>
+        <h2 style="font-size: 1.1rem; margin-top: 0;">歷史答錯題目清單</h2>
         <div id="wrong-list-content">目前尚無錯題紀錄！</div>
       </div>
     </div>
@@ -554,57 +352,24 @@
     ];
 
     let currentIndex = 0;
-    let wrongTrainIndex = 0;
-    let mode = 'quiz'; // 'quiz' | 'wrong-train' | 'wrong-list'
-
-    // 安全存取 LocalStorage / Memory Fallback
-    const memoryStore = {};
-    function safeGetItem(key) {
-      try {
-        return localStorage.getItem(key);
-      } catch (e) {
-        return memoryStore[key] || null;
-      }
-    }
-    function safeSetItem(key, val) {
-      try {
-        localStorage.setItem(key, val);
-      } catch (e) {
-        memoryStore[key] = val;
-      }
-    }
-
-    let wrongBook = {};
-    try {
-      wrongBook = JSON.parse(safeGetItem('ipas_wrong_book') || '{}');
-    } catch (e) {
-      wrongBook = {};
-    }
+    let mode = 'quiz';
+    let wrongBook = JSON.parse(localStorage.getItem('ipas_wrong_book') || '{}');
 
     function saveGasUrl() {
-      const urlInput = document.getElementById('gas-url');
-      const url = urlInput ? urlInput.value.trim() : '';
-      safeSetItem('ipas_gas_url', url);
-      const toast = document.getElementById('toast-msg');
-      if (toast) {
-        toast.style.display = 'block';
-        setTimeout(() => { toast.style.display = 'none'; }, 2500);
-      }
+      const url = document.getElementById('gas-url').value.trim();
+      localStorage.setItem('ipas_gas_url', url);
+      alert('後台網址已儲存！');
     }
 
     function initGasUrl() {
-      const url = safeGetItem('ipas_gas_url') || '';
-      const inputEl = document.getElementById('gas-url');
-      if (inputEl) inputEl.value = url;
+      const url = localStorage.getItem('ipas_gas_url') || '';
+      document.getElementById('gas-url').value = url;
     }
 
-    function updateBadges() {
-      const totalWrong = Object.keys(wrongBook).length;
-      document.getElementById('wrong-count').textContent = totalWrong;
-      document.getElementById('train-count').textContent = totalWrong;
+    function updateWrongBadge() {
+      document.getElementById('wrong-count').textContent = Object.keys(wrongBook).length;
     }
 
-    // ---------------- 1. 順序測驗邏輯 ----------------
     function renderQuestion() {
       const q = questions[currentIndex];
       document.getElementById('q-category').textContent = q.category;
@@ -629,12 +394,12 @@
 
       document.getElementById('btn-prev').disabled = currentIndex === 0;
       document.getElementById('btn-next').disabled = currentIndex === questions.length - 1;
-      updateBadges();
+      updateWrongBadge();
     }
 
     function checkAnswer(selectedIdx) {
       const q = questions[currentIndex];
-      const buttons = document.querySelectorAll('#q-options .option-btn');
+      const buttons = document.querySelectorAll('.option-btn');
       buttons.forEach(b => b.disabled = true);
 
       const explanationEl = document.getElementById('q-explanation');
@@ -644,49 +409,50 @@
       buttons[selectedIdx].classList.add(isCorrect ? 'correct' : 'wrong');
       if (!isCorrect) {
         buttons[q.answer].classList.add('correct');
-        const prevData = wrongBook[q.id] || {
-          practiceCount: 0,
-          correctCount: 0,
-          wrongCount: 0
-        };
         wrongBook[q.id] = {
           id: q.id,
           category: q.category,
           question: q.question,
-          options: q.options,
-          answer: q.answer,
           myChoice: ['A','B','C','D'][selectedIdx],
           correct: ['A','B','C','D'][q.answer],
-          explanation: q.explanation,
-          practiceCount: prevData.practiceCount,
-          correctCount: prevData.correctCount,
-          wrongCount: (prevData.wrongCount || 0) + 1,
-          status: 'pending' // 待複習
+          explanation: q.explanation
         };
+      } else {
+        delete wrongBook[q.id];
       }
-      safeSetItem('ipas_wrong_book', JSON.stringify(wrongBook));
-      updateBadges();
+      localStorage.setItem('ipas_wrong_book', JSON.stringify(wrongBook));
+      updateWrongBadge();
 
       explanationEl.innerHTML = `
-        <strong>${isCorrect ? '✅ 答對了！' : '❌ 答錯了！已自動加入【錯題專項題庫】'}</strong><br>
+        <strong>${isCorrect ? '✅ 答對了！' : '❌ 答錯了！'}</strong><br>
         <strong>正確答案：</strong>(${['A','B','C','D'][q.answer]})<br>
         <strong>考點解析：</strong>${q.explanation}
       `;
       explanationEl.style.display = 'block';
 
-      // 同步發送至 Google Sheets
-      syncToGoogleSheets({
-        subject: '考科一 (全真測驗)',
-        qId: q.id,
-        category: q.category,
-        question: q.question,
-        myChoice: ['A','B','C','D'][selectedIdx],
-        correctAnswer: ['A','B','C','D'][q.answer],
-        isCorrect: isCorrect,
-        explanation: q.explanation,
-        reviewStatus: isCorrect ? '已掌握' : '待複習',
-        syncEl: syncStatusEl
-      });
+      const gasUrl = localStorage.getItem('ipas_gas_url');
+      if (gasUrl) {
+        syncStatusEl.textContent = '⏳ 正在寫入 Google 試算表...';
+        fetch(gasUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subject: '考科一',
+            qId: q.id,
+            category: q.category,
+            question: q.question,
+            myChoice: ['A','B','C','D'][selectedIdx],
+            correctAnswer: ['A','B','C','D'][q.answer],
+            isCorrect: isCorrect,
+            explanation: q.explanation
+          })
+        }).then(() => {
+          syncStatusEl.textContent = '✅ 已成功同步寫入試算表！';
+        }).catch(err => {
+          syncStatusEl.textContent = '⚠️ 寫入失敗，請確認後台網址。';
+        });
+      }
     }
 
     function navigate(delta) {
@@ -694,268 +460,53 @@
       renderQuestion();
     }
 
-    // ---------------- 2. 錯題專項特訓模式 ----------------
-    function renderWrongTrain() {
-      const wrongList = Object.values(wrongBook);
-      const container = document.getElementById('wrong-train-section');
-      
-      if (wrongList.length === 0) {
-        container.innerHTML = `
-          <div class="card empty-state">
-            <h3 style="color:#1e293b;">🎉 太厲害了！目前沒有任何錯題！</h3>
-            <p>請先前往「全真順序測驗」刷題，凡是答錯的題目都會自動進入這裡獨立練習。</p>
-            <button class="action-btn" onclick="switchMode('quiz')">前往全真測驗</button>
-          </div>
-        `;
-        return;
-      }
-
-      if (wrongTrainIndex >= wrongList.length) {
-        wrongTrainIndex = 0;
-      } else if (wrongTrainIndex < 0) {
-        wrongTrainIndex = wrongList.length - 1;
-      }
-
-      const q = wrongList[wrongTrainIndex];
-      const totalPractices = (q.correctCount || 0) + (q.wrongCount || 0);
-      const accRate = totalPractices > 0 ? Math.round((q.correctCount / totalPractices) * 100) : 0;
-
-      document.getElementById('wt-category').textContent = `🎯 錯題特訓：${q.category}`;
-      document.getElementById('wt-item-rate').textContent = `此題特訓勝率：${accRate}%`;
-      document.getElementById('wt-item-stats').textContent = `已特訓 ${q.practiceCount || 0} 次 ｜ 答對 ${q.correctCount || 0} ｜ 答錯 ${q.wrongCount || 0}`;
-      document.getElementById('wt-text').textContent = `第 ${q.id} 題｜${q.question}`;
-      document.getElementById('wt-index').textContent = `${wrongTrainIndex + 1} / ${wrongList.length}`;
-
-      const optionsContainer = document.getElementById('wt-options');
-      const explanationEl = document.getElementById('wt-explanation');
-      const syncStatusEl = document.getElementById('wt-sync-status');
-      optionsContainer.innerHTML = '';
-      explanationEl.style.display = 'none';
-      syncStatusEl.textContent = '';
-
-      const letters = ['A', 'B', 'C', 'D'];
-      const opts = q.options || questions.find(item => item.id === q.id).options;
-      opts.forEach((opt, idx) => {
-        const btn = document.createElement('button');
-        btn.className = 'option-btn';
-        btn.textContent = `(${letters[idx]}) ${opt}`;
-        btn.onclick = () => checkWrongTrainAnswer(q, idx);
-        optionsContainer.appendChild(btn);
-      });
-
-      document.getElementById('wt-btn-prev').disabled = wrongList.length <= 1;
-      document.getElementById('wt-btn-next').disabled = wrongList.length <= 1;
-      updateBadges();
-    }
-
-    function checkWrongTrainAnswer(q, selectedIdx) {
-      const buttons = document.querySelectorAll('#wt-options .option-btn');
-      buttons.forEach(b => b.disabled = true);
-
-      const explanationEl = document.getElementById('wt-explanation');
-      const syncStatusEl = document.getElementById('wt-sync-status');
-      const isCorrect = selectedIdx === q.answer;
-
-      buttons[selectedIdx].classList.add(isCorrect ? 'correct' : 'wrong');
-      if (!isCorrect) {
-        buttons[q.answer].classList.add('correct');
-      }
-
-      // 更新錯題統計數據
-      wrongBook[q.id].practiceCount = (wrongBook[q.id].practiceCount || 0) + 1;
-      if (isCorrect) {
-        wrongBook[q.id].correctCount = (wrongBook[q.id].correctCount || 0) + 1;
-        wrongBook[q.id].status = 'mastered'; // 答對即轉為已掌握
-      } else {
-        wrongBook[q.id].wrongCount = (wrongBook[q.id].wrongCount || 0) + 1;
-        wrongBook[q.id].status = 'pending';
-      }
-      safeSetItem('ipas_wrong_book', JSON.stringify(wrongBook));
-      updateBadges();
-
-      const totalPractices = wrongBook[q.id].correctCount + wrongBook[q.id].wrongCount;
-      const accRate = Math.round((wrongBook[q.id].correctCount / totalPractices) * 100);
-      document.getElementById('wt-item-rate').textContent = `此題特訓勝率：${accRate}%`;
-      document.getElementById('wt-item-stats').textContent = `已特訓 ${wrongBook[q.id].practiceCount} 次 ｜ 答對 ${wrongBook[q.id].correctCount} ｜ 答錯 ${wrongBook[q.id].wrongCount}`;
-
-      explanationEl.innerHTML = `
-        <strong>${isCorrect ? '🎉 特訓答對！已自動標記為【🟢 已掌握】！' : '❌ 依然答錯了！別氣餒，再看一次考點解析：'}</strong><br>
-        <strong>正確答案：</strong>(${['A','B','C','D'][q.answer]})<br>
-        <strong>考點解析：</strong>${q.explanation}
-      `;
-      explanationEl.style.display = 'block';
-
-      // 同步發送至 Google Sheets (標註錯題特訓記錄)
-      syncToGoogleSheets({
-        subject: '考科一 (錯題專項特訓)',
-        qId: q.id,
-        category: q.category,
-        question: q.question,
-        myChoice: ['A','B','C','D'][selectedIdx],
-        correctAnswer: ['A','B','C','D'][q.answer],
-        isCorrect: isCorrect,
-        explanation: q.explanation,
-        reviewStatus: wrongBook[q.id].status === 'mastered' ? '已掌握' : '待複習',
-        extraInfo: `特訓勝率 ${accRate}% (練${wrongBook[q.id].practiceCount}次)`,
-        syncEl: syncStatusEl
-      });
-    }
-
-    function navigateWrongTrain(delta) {
-      wrongTrainIndex += delta;
-      renderWrongTrain();
-    }
-
-    // ---------------- 3. 錯題本與完整統計清單 ----------------
-    function renderWrongList() {
-      const container = document.getElementById('wrong-list-content');
-      const list = Object.values(wrongBook);
-      
-      // 計算儀表板總覽數據
-      let totalPractices = 0;
-      let totalCorrect = 0;
-      let totalWrongTimes = 0;
-      let pendingCount = 0;
-
-      list.forEach(item => {
-        totalPractices += (item.practiceCount || 0);
-        totalCorrect += (item.correctCount || 0);
-        totalWrongTimes += (item.wrongCount || 0);
-        if (item.status === 'pending') pendingCount++;
-      });
-
-      const totalAttempts = totalCorrect + totalWrongTimes;
-      const overallAccuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
-
-      document.getElementById('dash-total-wrong').textContent = list.length;
-      document.getElementById('dash-total-practice').textContent = totalPractices;
-      document.getElementById('dash-total-correct').textContent = totalCorrect;
-      document.getElementById('dash-accuracy').textContent = `${overallAccuracy}%`;
-
-      if (list.length === 0) {
-        container.innerHTML = '<div class="empty-state">太棒了！目前沒有錯題紀錄。</div>';
-        return;
-      }
-
-      let html = '';
-      list.forEach(item => {
-        const isMastered = item.status === 'mastered';
-        const pCount = item.practiceCount || 0;
-        const cCount = item.correctCount || 0;
-        const wCount = item.wrongCount || 0;
-        const itemAttempts = cCount + wCount;
-        const itemAccuracy = itemAttempts > 0 ? Math.round((cCount / itemAttempts) * 100) : 0;
-
-        html += `
-          <div class="wrong-card">
-            <div class="wrong-card-header">
-              <div>
-                <span style="font-weight:700; color:var(--primary); margin-right:8px;">第 ${item.id} 題</span>
-                <span class="badge" style="margin-bottom:0;">${item.category}</span>
-                <span class="pill ${isMastered ? 'mastered' : 'pending'}">${isMastered ? '🟢 已掌握' : '🔴 待複習'}</span>
-              </div>
-            </div>
-            <div class="wrong-card-title">${item.question}</div>
-            <div class="wrong-card-stats">
-              <span class="pill count">已練 ${pCount} 次</span>
-              <span class="pill rate">答對率 ${itemAccuracy}%</span>
-              <span class="pill correct">對 ${cCount} 次</span>
-              <span class="pill wrong">錯 ${wCount} 次</span>
-            </div>
-            <div class="wrong-card-details">
-              <div><strong>上次你的答案：</strong><span style="color:red; font-weight:bold;">${item.myChoice}</span> ｜ <strong>正確答案：</strong><span style="color:green; font-weight:bold;">${item.correct}</span></div>
-              <div style="margin-top:4px;"><strong>解析：</strong>${item.explanation}</div>
-            </div>
-            <div class="wrong-card-actions">
-              <button class="btn-sm primary" onclick="startSingleTrain(${item.id})">🎯 特訓此題</button>
-              <button class="btn-sm ${isMastered ? '' : 'success'}" onclick="toggleStatus(${item.id})">
-                ${isMastered ? '🔄 標記待複習' : '✅ 標記已掌握'}
-              </button>
-              <button class="btn-sm danger" onclick="removeWrongItem(${item.id})">🗑️ 移除</button>
-            </div>
-          </div>
-        `;
-      });
-      container.innerHTML = html;
-    }
-
-    function startSingleTrain(qId) {
-      const list = Object.values(wrongBook);
-      const targetIdx = list.findIndex(item => item.id === qId);
-      if (targetIdx !== -1) {
-        wrongTrainIndex = targetIdx;
-        switchMode('wrong-train');
-      }
-    }
-
-    function toggleStatus(qId) {
-      if (!wrongBook[qId]) return;
-      wrongBook[qId].status = wrongBook[qId].status === 'mastered' ? 'pending' : 'mastered';
-      safeSetItem('ipas_wrong_book', JSON.stringify(wrongBook));
-      renderWrongList();
-      updateBadges();
-    }
-
-    function removeWrongItem(qId) {
-      delete wrongBook[qId];
-      safeSetItem('ipas_wrong_book', JSON.stringify(wrongBook));
-      renderWrongList();
-      updateBadges();
-    }
-
-    // ---------------- 4. 模式切換與雲端同步 ----------------
     function switchMode(newMode) {
       mode = newMode;
       document.getElementById('btn-quiz-mode').classList.toggle('active', mode === 'quiz');
-      document.getElementById('btn-wrong-train-mode').classList.toggle('active', mode === 'wrong-train');
-      document.getElementById('btn-wrong-list-mode').classList.toggle('active', mode === 'wrong-list');
-
-      document.getElementById('quiz-section').style.display = mode === 'quiz' ? 'block' : 'none';
-      document.getElementById('wrong-train-section').style.display = mode === 'wrong-train' ? 'block' : 'none';
-      document.getElementById('wrong-list-section').style.display = mode === 'wrong-list' ? 'block' : 'none';
+      document.getElementById('btn-wrong-mode').classList.toggle('active', mode === 'wrong');
 
       if (mode === 'quiz') {
+        document.getElementById('quiz-section').style.display = 'block';
+        document.getElementById('wrong-section').style.display = 'none';
         renderQuestion();
-      } else if (mode === 'wrong-train') {
-        renderWrongTrain();
-      } else if (mode === 'wrong-list') {
+      } else {
+        document.getElementById('quiz-section').style.display = 'none';
+        document.getElementById('wrong-section').style.display = 'block';
         renderWrongList();
       }
     }
 
-    function syncToGoogleSheets(payload) {
-      const gasUrl = safeGetItem('ipas_gas_url');
-      if (!gasUrl) return;
-
-      if (payload.syncEl) {
-        payload.syncEl.textContent = '⏳ 正在寫入 Google 試算表...';
+    function renderWrongList() {
+      const container = document.getElementById('wrong-list-content');
+      const list = Object.values(wrongBook);
+      if (list.length === 0) {
+        container.innerHTML = '<p style="color: #64748b;">太棒了！目前沒有錯題紀錄。</p>';
+        return;
       }
-
-      fetch(gasUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject: payload.subject,
-          qId: payload.qId,
-          category: payload.category,
-          question: payload.question,
-          myChoice: payload.myChoice,
-          correctAnswer: payload.correctAnswer,
-          isCorrect: payload.isCorrect,
-          explanation: payload.explanation,
-          reviewStatus: payload.reviewStatus,
-          extraInfo: payload.extraInfo || ''
-        })
-      }).then(() => {
-        if (payload.syncEl) {
-          payload.syncEl.textContent = '✅ 已成功同步寫入試算表！';
-        }
-      }).catch(err => {
-        if (payload.syncEl) {
-          payload.syncEl.textContent = '⚠️ 寫入失敗，請確認後台網址。';
-        }
+      let html = `<table>
+        <thead>
+          <tr>
+            <th>題號</th>
+            <th>考點</th>
+            <th>題目摘要</th>
+            <th>你的答案</th>
+            <th>正解</th>
+            <th>解析</th>
+          </tr>
+        </thead>
+        <tbody>`;
+      list.forEach(item => {
+        html += `<tr>
+          <td>${item.id}</td>
+          <td>${item.category}</td>
+          <td>${item.question.slice(0, 18)}...</td>
+          <td style="color:red;font-weight:bold;">${item.myChoice}</td>
+          <td style="color:green;font-weight:bold;">${item.correct}</td>
+          <td>${item.explanation}</td>
+        </tr>`;
       });
+      html += `</tbody></table>`;
+      container.innerHTML = html;
     }
 
     initGasUrl();
