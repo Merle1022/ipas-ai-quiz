@@ -125,6 +125,12 @@
       border-color: var(--primary);
       background: #f0f7ff;
     }
+    .option-btn.selected {
+      background: #dbeafe;
+      border-color: var(--primary);
+      color: #1e3a8a;
+      font-weight: 700;
+    }
     .option-btn.correct {
       background: #dcfce7 !important;
       border-color: var(--success) !important;
@@ -167,6 +173,26 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
+    .action-btn.secondary {
+      background: #475569;
+    }
+    .exam-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .exam-controls select {
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+    }
+    .review-item {
+      border-top: 1px solid var(--border);
+      padding: 14px 0;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -200,7 +226,17 @@
     </div>
 
     <div id="quiz-section">
-      <p style="font-size:.9rem;color:#475569;">題庫 60 題。每份隨機抽 30 題（兩科各 15 題），每次重新抽選與排序；練習題並非官方試題。</p>
+      <p style="font-size:.9rem;color:#475569;">題庫 60 題；正式初級考試分兩科、每科 75 分鐘。本練習可分次完成，不限時。題目與選項隨機排序；交卷前可改答案，交卷後才顯示解析。非官方試題。</p>
+      <div class="exam-controls">
+        <label for="subject-select">練習範圍</label>
+        <select id="subject-select">
+          <option value="all">兩科混合（60 題）</option>
+          <option value="one">考科一（35 題）</option>
+          <option value="two">考科二（25 題）</option>
+        </select>
+        <button class="action-btn secondary" id="btn-switch-subject" onclick="changeSubject()">切換並開始新卷</button>
+      </div>
+      <p id="practice-progress" aria-live="polite" style="font-weight:600;color:#334155;"></p>
       <div class="card">
         <span class="badge" id="q-category">考科一：人工智慧基礎概論</span>
         <div class="question-title" id="q-text">載入題目中...</div>
@@ -213,6 +249,7 @@
         <span id="q-index" style="align-self: center; font-weight: 600;"></span>
         <button class="action-btn" id="btn-next" onclick="navigate(1)">下一題</button>
       </div>
+      <button class="action-btn secondary" id="btn-finish" onclick="finishExam()" style="margin-top:12px;">完成並對答案</button>
       <div id="exam-result" class="card" style="display:none; margin-top:16px;"></div>
     </div>
 
@@ -355,7 +392,13 @@
     ];
 
     questions.push(...extraQuestions);
-    const PAPER_SIZE = 30;
+    const EXAM_KEY = 'ipas_exam_session_v2';
+    const PROGRESS_KEY = 'ipas_exam_progress_v2';
+    const todayKey = () => new Date().toLocaleDateString('en-CA');
+    const loadJson = (key, fallback) => {
+      try { return JSON.parse(localStorage.getItem(key)) || fallback; }
+      catch { return fallback; }
+    };
     const shuffle = items => {
       const result = [...items];
       for (let i = result.length - 1; i > 0; i--) {
@@ -369,16 +412,46 @@
     let currentIndex = 0;
     let examFinished = false;
     let mode = 'quiz';
-    let wrongBook;
-    try { wrongBook = JSON.parse(localStorage.getItem('ipas_wrong_book') || '{}'); }
-    catch { wrongBook = {}; }
+    let subject = localStorage.getItem('ipas_subject_mode') || 'all';
+    if (!['all', 'one', 'two'].includes(subject)) subject = 'all';
+    let progress = loadJson(PROGRESS_KEY, { date: todayKey(), todayCount: 0, seen: [] });
+    if (!Array.isArray(progress.seen)) progress.seen = [];
+    if (!Number.isInteger(progress.todayCount) || progress.todayCount < 0) progress.todayCount = 0;
+    let wrongBook = loadJson('ipas_wrong_book', {});
     if (!wrongBook || Array.isArray(wrongBook) || typeof wrongBook !== 'object') wrongBook = {};
 
+    function subjectPool() {
+      if (subject === 'one') return questions.filter(q => !q.category.startsWith('考科二'));
+      if (subject === 'two') return questions.filter(q => q.category.startsWith('考科二'));
+      return questions;
+    }
+
+    function updateProgress() {
+      if (progress.date !== todayKey()) {
+        progress.date = todayKey();
+        progress.todayCount = 0;
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+      }
+      document.getElementById('practice-progress').textContent =
+        `今日已答 ${progress.todayCount} 題｜本輪題庫已練 ${progress.seen.length}/${questions.length} 題｜這份考卷已答 ${Object.keys(answers).length}/${paper.length} 題`;
+    }
+
+    function saveExam() {
+      localStorage.setItem(EXAM_KEY, JSON.stringify({ paper, answers, currentIndex, subject }));
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+      updateProgress();
+    }
+
     function startExam() {
-      // 每張考卷從兩科各抽 15 題，再打亂整張考卷；已出過的題仍會參與下次抽選。
-      const first = shuffle(questions.filter(q => !q.category.startsWith('考科二'))).slice(0, PAPER_SIZE / 2);
-      const second = shuffle(questions.filter(q => q.category.startsWith('考科二'))).slice(0, PAPER_SIZE / 2);
-      paper = shuffle([...first, ...second]).map(q => {
+      localStorage.setItem('ipas_subject_mode', subject);
+      const pool = subjectPool();
+      let available = pool.filter(q => !progress.seen.includes(q.id));
+      if (!available.length) {
+        const ids = new Set(pool.map(q => q.id));
+        progress.seen = progress.seen.filter(id => !ids.has(id));
+        available = pool;
+      }
+      paper = shuffle(available).map(q => {
         const order = shuffle([0, 1, 2, 3]);
         return { ...q, options: order.map(i => q.options[i]), answer: order.indexOf(q.answer) };
       });
@@ -388,7 +461,21 @@
       document.getElementById('exam-result').style.display = 'none';
       document.getElementById('quiz-section').querySelector('.card').style.display = 'block';
       document.querySelector('#quiz-section .actions').style.display = 'flex';
+      document.getElementById('btn-finish').style.display = 'inline-block';
+      document.getElementById('subject-select').value = subject;
+      saveExam();
       renderQuestion();
+    }
+
+    function changeSubject() {
+      const next = document.getElementById('subject-select').value;
+      if (!examFinished && Object.keys(answers).length &&
+          !confirm('切換會結束目前未交卷的作答；已答題目仍計入今日進度。要繼續嗎？')) {
+        document.getElementById('subject-select').value = subject;
+        return;
+      }
+      subject = next;
+      startExam();
     }
 
     function saveGasUrl() {
@@ -413,11 +500,9 @@
       document.getElementById('q-index').textContent = `${currentIndex + 1} / ${paper.length}`;
       
       const optionsContainer = document.getElementById('q-options');
-      const explanationEl = document.getElementById('q-explanation');
-      const syncStatusEl = document.getElementById('q-sync-status');
       optionsContainer.innerHTML = '';
-      explanationEl.style.display = 'none';
-      syncStatusEl.textContent = '';
+      document.getElementById('q-explanation').style.display = 'none';
+      document.getElementById('q-sync-status').textContent = '';
 
       const letters = ['A', 'B', 'C', 'D'];
       q.options.forEach((opt, idx) => {
@@ -425,108 +510,97 @@
         btn.className = 'option-btn';
         btn.textContent = `(${letters[idx]}) ${opt}`;
         btn.onclick = () => checkAnswer(idx);
-        if (answers[q.id] !== undefined) {
-          btn.disabled = true;
-          if (idx === q.answer) btn.classList.add('correct');
-          else if (idx === answers[q.id]) btn.classList.add('wrong');
-        }
+        if (idx === answers[q.id]) btn.classList.add('selected');
         optionsContainer.appendChild(btn);
       });
 
-      if (answers[q.id] !== undefined) {
-        explanationEl.textContent = `正確答案：${letters[q.answer]}。考點解析：${q.explanation}`;
-        explanationEl.style.display = 'block';
-      }
       document.getElementById('btn-prev').disabled = currentIndex === 0;
-      document.getElementById('btn-next').disabled = answers[q.id] === undefined;
-      document.getElementById('btn-next').textContent = currentIndex === paper.length - 1 ? '完成考卷' : '下一題';
+      document.getElementById('btn-next').disabled = currentIndex === paper.length - 1;
+      document.getElementById('btn-next').textContent = '下一題';
       updateWrongBadge();
+      updateProgress();
     }
 
     function checkAnswer(selectedIdx) {
       const q = paper[currentIndex];
-      if (answers[q.id] !== undefined || examFinished) return;
+      if (examFinished) return;
+      const firstAnswer = answers[q.id] === undefined;
       answers[q.id] = selectedIdx;
-      const buttons = document.querySelectorAll('.option-btn');
-      buttons.forEach(b => b.disabled = true);
-
-      const explanationEl = document.getElementById('q-explanation');
-      const syncStatusEl = document.getElementById('q-sync-status');
-      const isCorrect = selectedIdx === q.answer;
-
-      buttons[selectedIdx].classList.add(isCorrect ? 'correct' : 'wrong');
-      if (!isCorrect) {
-        buttons[q.answer].classList.add('correct');
-        wrongBook[q.id] = {
-          id: q.id,
-          category: q.category,
-          question: q.question,
-          myChoice: ['A','B','C','D'][selectedIdx],
-          correct: ['A','B','C','D'][q.answer],
-          explanation: q.explanation
-        };
-      } else {
-        delete wrongBook[q.id];
+      if (firstAnswer) {
+        if (progress.date !== todayKey()) {
+          progress.date = todayKey();
+          progress.todayCount = 0;
+        }
+        progress.todayCount += 1;
+        if (!progress.seen.includes(q.id)) progress.seen.push(q.id);
       }
-      localStorage.setItem('ipas_wrong_book', JSON.stringify(wrongBook));
-      updateWrongBadge();
-
-      explanationEl.textContent = `${isCorrect ? '✅ 答對了！' : '❌ 答錯了！'} 正確答案：${['A','B','C','D'][q.answer]}。考點解析：${q.explanation}`;
-      explanationEl.style.display = 'block';
-      document.getElementById('btn-next').disabled = false;
-
-      const gasUrl = localStorage.getItem('ipas_gas_url');
-      if (gasUrl) {
-        syncStatusEl.textContent = '⏳ 正在寫入 Google 試算表...';
-        fetch(gasUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            subject: q.category.startsWith('考科二') ? '考科二' : '考科一',
-            qId: q.id,
-            category: q.category,
-            question: q.question,
-            myChoice: ['A','B','C','D'][selectedIdx],
-            correctAnswer: ['A','B','C','D'][q.answer],
-            isCorrect: isCorrect,
-            explanation: q.explanation
-          })
-        }).then(() => {
-          syncStatusEl.textContent = '📨 已送出寫入請求；請到試算表確認紀錄。';
-        }).catch(err => {
-          syncStatusEl.textContent = '⚠️ 寫入失敗，請確認後台網址。';
-        });
-      }
+      document.querySelectorAll('.option-btn').forEach((button, idx) =>
+        button.classList.toggle('selected', idx === selectedIdx));
+      saveExam();
     }
 
     function navigate(delta) {
-      if (delta > 0 && currentIndex === paper.length - 1) {
-        finishExam();
-        return;
-      }
-      currentIndex += delta;
+      currentIndex = Math.max(0, Math.min(paper.length - 1, currentIndex + delta));
+      saveExam();
       renderQuestion();
     }
 
     function finishExam() {
-      if (Object.keys(answers).length !== paper.length) return;
+      if (examFinished) return;
+      const attempted = paper.filter(q => answers[q.id] !== undefined);
+      if (!attempted.length) {
+        alert('請至少作答一題，再按完成對答案。');
+        return;
+      }
       examFinished = true;
-      const score = paper.filter(q => answers[q.id] === q.answer).length;
+      localStorage.removeItem(EXAM_KEY);
+      const score = attempted.filter(q => answers[q.id] === q.answer).length;
       document.getElementById('quiz-section').querySelector('.card').style.display = 'none';
       document.querySelector('#quiz-section .actions').style.display = 'none';
+      document.getElementById('btn-finish').style.display = 'none';
       const result = document.getElementById('exam-result');
       result.replaceChildren();
       const heading = document.createElement('h2');
-      heading.textContent = `本次完成 ${paper.length} 題，答對 ${score} 題`;
+      heading.textContent = `本次已答 ${attempted.length} 題，答對 ${score} 題`;
       const note = document.createElement('p');
-      note.textContent = '下一份考卷會重新抽題、重新排序；舊題仍可能出現。';
+      note.textContent = `另有 ${paper.length - attempted.length} 題未作答，下次會優先從本輪未練過的題目抽選。這是練習紀錄，不是正式考試成績。`;
       const button = document.createElement('button');
       button.className = 'action-btn';
       button.textContent = '開始新考卷';
       button.addEventListener('click', startExam);
       result.append(heading, note, button);
+      attempted.forEach((q, index) => {
+        const item = document.createElement('div');
+        item.className = 'review-item';
+        const title = document.createElement('strong');
+        title.textContent = `${index + 1}. ${q.question}`;
+        const detail = document.createElement('p');
+        const selected = answers[q.id];
+        detail.textContent = `${selected === q.answer ? '✅' : '❌'} 你的答案：${'ABCD'[selected]}（${q.options[selected]}）｜正解：${'ABCD'[q.answer]}（${q.options[q.answer]}）`;
+        const explanation = document.createElement('p');
+        explanation.textContent = `解析：${q.explanation}`;
+        item.append(title, detail, explanation);
+        result.append(item);
+        const isCorrect = selected === q.answer;
+        if (!isCorrect) {
+          wrongBook[q.id] = { id: q.id, category: q.category, question: q.question,
+            myChoice: 'ABCD'[selected], correct: 'ABCD'[q.answer], explanation: q.explanation };
+        } else {
+          delete wrongBook[q.id];
+        }
+        const gasUrl = localStorage.getItem('ipas_gas_url');
+        if (gasUrl) fetch(gasUrl, {
+          method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subject: q.category.startsWith('考科二') ? '考科二' : '考科一',
+            qId: q.id, category: q.category, question: q.question,
+            myChoice: 'ABCD'[selected], correctAnswer: 'ABCD'[q.answer],
+            isCorrect, explanation: q.explanation })
+        }).catch(() => {});
+      });
+      localStorage.setItem('ipas_wrong_book', JSON.stringify(wrongBook));
+      updateWrongBadge();
       result.style.display = 'block';
+      updateProgress();
     }
 
     function switchMode(newMode) {
@@ -579,7 +653,22 @@
     }
 
     initGasUrl();
-    startExam();
+    const savedExam = loadJson(EXAM_KEY, null);
+    if (savedExam && Array.isArray(savedExam.paper) && savedExam.paper.length &&
+        ['all', 'one', 'two'].includes(savedExam.subject) &&
+        savedExam.paper.every(q => Number.isInteger(q.id) &&
+          questions.some(source => source.id === q.id) &&
+          Array.isArray(q.options) && q.options.length === 4 &&
+          Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4)) {
+      paper = savedExam.paper;
+      answers = savedExam.answers && typeof savedExam.answers === 'object' ? savedExam.answers : {};
+      currentIndex = Math.max(0, Math.min(paper.length - 1, Number(savedExam.currentIndex) || 0));
+      subject = savedExam.subject;
+      document.getElementById('subject-select').value = subject;
+      renderQuestion();
+    } else {
+      startExam();
+    }
   </script>
 </body>
 </html>
