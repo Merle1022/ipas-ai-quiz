@@ -3,7 +3,8 @@
 
 > 專為 iPAS AI 應用規劃師考生打造的零成本、具備持久記憶與錯題特訓題庫的開源備考系統。
 
-* 🌐 **正式線上體驗網址（Live Demo）**：[https://ipas-ai-quiz.netlify.app](https://www.google.com/search?q=https://ipas-ai-quiz.netlify.app)
+* 🌐 **正式線上體驗網址 (Live Demo)** : [https://ipas-ai-quiz.netlify.app](https://ipas-ai-quiz.netlify.app)
+
 * 📊 **配套 Google 試算表開源範本**：[點此取得專屬試算表範本（含雙表分流）](https://docs.google.com/spreadsheets/d/1q4B900nans6ob4guhHT7h5Pdgo-0Q0cqmCpYPgm-zG4/copy)
 * 👤 **專案發起人**：Merle ([@Merle1022](https://github.com/Merle1022))
 
