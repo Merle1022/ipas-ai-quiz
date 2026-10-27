@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iPAS AI 應用規劃師 - 互動測驗系統</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --border: #e2e8f0;
+      --radius: 12px;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+      padding: 16px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    h1 {
+      font-size: 1.25rem;
+      margin: 0;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    .config-box {
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 0.85rem;
+      position: relative;
+    }
+    .config-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+      align-items: center;
+    }
+    .config-box input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .config-box input:focus {
+      border-color: var(--primary);
+    }
+    .config-box button {
+      padding: 8px 14px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+    .config-box button:hover {
+      background: var(--primary-hover);
+    }
+    .toast-msg {
+      font-size: 0.8rem;
+      color: var(--success);
+      margin-top: 6px;
+      display: none;
+      font-weight: 600;
+    }
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .nav-tabs button {
+      background: white;
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+    }
+    .nav-tabs button.active {
+      background-color: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background: #eff6ff;
+      color: var(--primary);
+      font-size: 0.8rem;
+      border-radius: 6px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .question-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .option-btn {
+      padding: 14px 18px;
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      text-align: left;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      line-height: 1.4;
+    }
+    .option-btn:hover:not(:disabled) {
+      border-color: var(--primary);
+      background: #f0f7ff;
+    }
+    .option-btn.correct {
+      background: #dcfce7 !important;
+      border-color: var(--success) !important;
+      color: #14532d;
+      font-weight: 600;
+    }
+    .option-btn.wrong {
+      background: #fee2e2 !important;
+      border-color: var(--danger) !important;
+      color: #7f1d1d;
+    }
+    .explanation {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border-left: 4px solid var(--primary);
+      display: none;
+      line-height: 1.6;
+    }
+    .sync-status {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 8px;
+    }
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+      align-items: center;
+    }
+    .action-btn {
+      padding: 10px 20px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .action-btn:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* 統計儀表板 Dashboard */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    /* 錯題卡片設計 */
+    .wrong-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 14px;
+      background: #ffffff;
+      transition: border-color 0.2s;
+    }
+    .wrong-card:hover {
+      border-color: #cbd5e1;
+    }
+    .wrong-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .wrong-card-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+    .wrong-card-details {
+      font-size: 0.9rem;
+      background: #f8fafc;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      line-height: 1.6;
+    }
+    .wrong-card-stats {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 0.8rem;
+      flex-wrap: wrap;
+    }
+    .pill {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .pill.count { background: #f1f5f9; color: #334155; }
+    .pill.rate { background: #eff6ff; color: #1d4ed8; }
+    .pill.correct { background: #dcfce7; color: #166534; }
+    .pill.wrong { background: #fee2e2; color: #991b1b; }
+    .pill.pending { background: #fef3c7; color: #92400e; }
+    .pill.mastered { background: #dcfce7; color: #166534; }
+
+    .wrong-card-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: white;
+      transition: all 0.2s;
+    }
+    .btn-sm:hover {
+      background: #f1f5f9;
+    }
+    .btn-sm.primary {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .btn-sm.primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn-sm.success {
+      background: #dcfce7;
+      color: #166534;
+      border-color: #86efac;
+    }
+    .btn-sm.danger {
+      color: var(--danger);
+    }
+    .btn-sm.danger:hover {
+      background: #fee2e2;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 16px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>iPAS AI 應用規劃師（初級）</h1>
+      <div class="nav-tabs">
+        <button id="btn-quiz-mode" class="active" onclick="switchMode('quiz')">📝 全真順序測驗</button>
+        <button id="btn-wrong-train-mode" onclick="switchMode('wrong-train')">🎯 錯題專項特訓 (<span id="train-count">0</span>)</button>
+        <button id="btn-wrong-list-mode" onclick="switchMode('wrong-list')">📊 錯題本與分析 (<span id="wrong-count">0</span>)</button>
+      </div>
+    </header>
+
+    <!-- 後台試算表 Webhook 設定列 -->
+    <div class="config-box">
+      <div><strong>🔗 自動同步試算表：</strong></div>
+      <div class="config-row">
+        <input type="text" id="gas-url" placeholder="貼上 Google Apps Script 網頁應用程式網址 (留空則純本地記錄)">
+        <button onclick="saveGasUrl()">儲存網址</button>
+      </div>
+      <div id="toast-msg" class="toast-msg">✅ 後台網址已儲存！</div>
+    </div>
+
+    <!-- 模式 1：全真順序測驗區域 -->
+    <div id="quiz-section">
+      <div class="card">
+        <span class="badge" id="q-category">考科一：人工智慧基礎概論</span>
+        <div class="question-title" id="q-text">載入題目中...</div>
+        <div class="options" id="q-options"></div>
+        <div class="explanation" id="q-explanation"></div>
+        <div class="sync-status" id="q-sync-status"></div>
+      </div>
+      <div class="actions">
+        <button class="action-btn" id="btn-prev" onclick="navigate(-1)">上一題</button>
+        <span id="q-index" style="align-self: center; font-weight: 600;">1 / 10</span>
+        <button class="action-btn" id="btn-next" onclick="navigate(1)">下一題</button>
+      </div>
+    </div>
+
+    <!-- 模式 2：錯題專項特訓測驗區域 -->
+    <div id="wrong-train-section" style="display: none;">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <span class="badge" id="wt-category" style="background:#fef2f2; color:#b91c1c;">🎯 錯題專項特訓</span>
+            <span class="pill rate" id="wt-item-rate">此題勝率：0%</span>
+          </div>
+          <span style="font-size: 0.85rem; color: #64748b;" id="wt-item-stats">已練 0 次 ｜ 對 0 ｜ 錯 0</span>
+        </div>
+        <div class="question-title" id="wt-text">載入錯題中...</div>
+        <div class="options" id="wt-options"></div>
+        <div class="explanation" id="wt-explanation"></div>
+        <div class="sync-status" id="wt-sync-status"></div>
+      </div>
+      <div class="actions">
+        <button class="action-btn" id="wt-btn-prev" onclick="navigateWrongTrain(-1)">上一題</button>
+        <span id="wt-index" style="align-self: center; font-weight: 600;">1 / 1</span>
+        <button class="action-btn" id="wt-btn-next" onclick="navigateWrongTrain(1)">下一題</button>
+      </div>
+    </div>
+
+    <!-- 模式 3：錯題本與完整統計分析區域 -->
+    <div id="wrong-list-section" style="display: none;">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+          <h2 style="font-size: 1.15rem; margin: 0;">錯題弱點統計儀表板</h2>
+          <button class="btn-sm primary" onclick="switchMode('wrong-train')">🚀 開始錯題專項特訓</button>
+        </div>
+
+        <!-- 統計數據卡片 -->
+        <div class="dashboard-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="dash-total-wrong">0</div>
+            <div class="stat-label">待複習錯題數</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="dash-total-practice">0</div>
+            <div class="stat-label">累積特訓次數</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="dash-total-correct">0</div>
+            <div class="stat-label">特訓答對次數</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="dash-accuracy">0%</div>
+            <div class="stat-label">特訓平均答對率</div>
+          </div>
+        </div>
+
+        <h3 style="font-size: 1rem; margin-top: 24px; margin-bottom: 12px; color: #334155;">錯題清單與個別勝率</h3>
+        <div id="wrong-list-content">目前尚無錯題紀錄！</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const questions = [
+      {
+        id: 1,
+        category: "L111 人工智慧概念與治理",
+        question: "某食品工廠的輸送帶依固定時間每 10 分鐘啟動一次；另一套系統則會根據影像判斷包裝是否破損，並隨新資料更新判斷規則。下列敘述何者最適當？",
+        options: [
+          "兩套系統都必然屬於 AI",
+          "前者偏固定規則自動化，後者具資料學習與判斷特性",
+          "只有前者屬 AI，因為它能自動執行",
+          "是否屬 AI 只取決於運算速度"
+        ],
+        answer: 1,
+        explanation: "固定排程能自動執行，但不必然具有學習、推論或適應能力；影像系統從資料中建立判斷模型，符合 AI 的核心特徵。"
+      },
+      {
+        id: 2,
+        category: "L111 人工智慧概念與治理",
+        question: "連鎖書店依過去三年的銷售、節慶與天氣資料，估計下個月各門市的童書需求量。此任務主要屬於哪一類 AI？",
+        options: ["分析型 AI", "生成型 AI", "預測型 AI", "規則式排程，不涉及 AI"],
+        answer: 2,
+        explanation: "任務輸出是尚未發生的未來需求量，核心在利用歷史資料預測未來，因此屬預測型 AI。"
+      },
+      {
+        id: 3,
+        category: "L111 人工智慧概念與治理",
+        question: "一套 AI 可翻譯多國語言、摘要文件並回答問題，但無法自行設定跨領域人生目標，也不具一般人類在所有任務上的適應能力。依能力範圍分類，最合理的判斷為何？",
+        options: [
+          "仍屬狹義人工智慧（ANI）",
+          "已屬通用人工智慧（AGI）",
+          "已屬超人工智慧（ASI）",
+          "只要能做多項任務就不能稱為 AI"
+        ],
+        answer: 0,
+        explanation: "目前商用生成式 AI 雖可執行多種相關任務，仍是在訓練與設計範圍內運作，未達全面通用智能，仍屬 ANI。"
+      },
+      {
+        id: 4,
+        category: "L111 人工智慧概念與治理",
+        question: "某公司將客服模型委外建置。上線後出現錯誤退費建議，內部主管表示「模型由供應商提供，所以本公司不需負責」。依 AI 治理觀念，何者最適當？",
+        options: [
+          "只要合約未寫明，公司即可免責",
+          "錯誤由模型自行承擔",
+          "只需要求供應商公開模型參數",
+          "使用 AI 的組織仍應建立責任分工、監督與申訴機制"
+        ],
+        answer: 3,
+        explanation: "委外不等於免除責任。導入與使用 AI 的組織須明確分工、持續監控、保存紀錄，並提供人工處理與申訴管道。"
+      },
+      {
+        id: 5,
+        category: "L111 人工智慧概念與治理",
+        question: "大學使用 AI 協助判斷獎學金申請資料是否齊全，但涉及資格認定或退件時，必須由承辦人檢視證據後決定。這最符合哪一種設計？",
+        options: [
+          "Human-in-the-loop，人員保留關鍵決策權",
+          "完全自主 AI，不需人工參與",
+          "非監督式學習",
+          "資料去識別化"
+        ],
+        answer: 0,
+        explanation: "AI 處理初步篩選，人員在高風險/關鍵節點審核並作成決定，屬於典型的 Human-in-the-loop 機制。"
+      },
+      {
+        id: 6,
+        category: "L111 人工智慧概念與治理",
+        question: "銀行的 AI 拒絕某客戶貸款，客服只能回答「系統判定未通過」，無法說明主要影響因素，也沒有人工複核管道。最直接涉及哪一治理缺口？",
+        options: [
+          "模型運算速度不足",
+          "資料量一定太少",
+          "缺乏透明、可解釋及救濟機制",
+          "未採用生成式 AI"
+        ],
+        answer: 2,
+        explanation: "高影響決策應讓受影響者了解 AI 使用情形、主要依據與限制，並具備可請求人員複核或申訴的救濟機制。"
+      },
+      {
+        id: 7,
+        category: "L111 人工智慧概念與治理",
+        question: "保險模型未直接使用族群欄位，卻使用居住郵遞區號，結果對特定族群的費率明顯較高。最適當的判斷為何？",
+        options: [
+          "未使用族群欄位，因此不可能有偏見",
+          "郵遞區號可能成為代理變數，仍需做公平性與差異影響檢查",
+          "只要整體準確率高即可忽略群體差異",
+          "刪除所有地理資料即可證明公平"
+        ],
+        answer: 1,
+        explanation: "看似中性的欄位若與敏感特徵高度相關，會成為「代理變數（Proxy Variable）」造成間接偏見，必須做差異影響檢查。"
+      },
+      {
+        id: 8,
+        category: "L112 資料處理與分析",
+        question: "健身 App 原先蒐集心率資料供個人運動回饋，後來未另行告知就把資料交給合作廠商訓練保險定價模型。首要風險為何？",
+        options: [
+          "資料格式不是 CSV",
+          "模型可能訓練太慢",
+          "心率資料無法用於機器學習",
+          "資料使用超出原告知目的，涉及隱私與合法性"
+        ],
+        answer: 3,
+        explanation: "個人資料必須符合「目的限制原則」，超出原本告知的使用範圍時，涉及嚴重的隱私與法規授權風險。"
+      },
+      {
+        id: 9,
+        category: "L111 人工智慧概念與治理",
+        question: "某機構同時使用 AI 整理會議逐字稿及協助判斷急診病患優先順序。治理資源有限時，最合理的配置原則為何？",
+        options: [
+          "依可能傷害與影響程度分級，對醫療排序設更嚴格控制",
+          "兩者使用相同控制，因為都是 AI",
+          "先管會議摘要，因為文字較長",
+          "只看供應商價格決定風險"
+        ],
+        answer: 0,
+        explanation: "風險導向治理（Risk-based approach）主張依可能造成的傷害程度與影響範圍進行分級管控。"
+      },
+      {
+        id: 10,
+        category: "L111 人工智慧概念與治理",
+        question: "零售需求模型上線半年後，因消費型態改變而預測誤差持續升高。下列何者最符合治理生命週期的處理方式？",
+        options: [
+          "永久沿用原模型以維持一致",
+          "只增加伺服器記憶體",
+          "監測資料與效能漂移，必要時重新訓練、驗證及版本控管",
+          "刪除所有歷史資料後立即上線新模型"
+        ],
+        answer: 2,
+        explanation: "上線後需持續監控模型漂移（Model Drift），當分佈或行為改變導致效能下降時，應重新訓練、驗證並做好版本控管。"
+      }
+    ];
+
+    let currentIndex = 0;
+    let wrongTrainIndex = 0;
+    let mode = 'quiz'; // 'quiz' | 'wrong-train' | 'wrong-list'
+
+    // 安全存取 LocalStorage / Memory Fallback
+    const memoryStore = {};
+    function safeGetItem(key) {
+      try {
+        return localStorage.getItem(key);
+      } catch (e) {
+        return memoryStore[key] || null;
+      }
+    }
+    function safeSetItem(key, val) {
+      try {
+        localStorage.setItem(key, val);
+      } catch (e) {
+        memoryStore[key] = val;
+      }
+    }
+
+    let wrongBook = {};
+    try {
+      wrongBook = JSON.parse(safeGetItem('ipas_wrong_book') || '{}');
+    } catch (e) {
+      wrongBook = {};
+    }
+
+    function saveGasUrl() {
+      const urlInput = document.getElementById('gas-url');
+      const url = urlInput ? urlInput.value.trim() : '';
+      safeSetItem('ipas_gas_url', url);
+      const toast = document.getElementById('toast-msg');
+      if (toast) {
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2500);
+      }
+    }
+
+    function initGasUrl() {
+      const url = safeGetItem('ipas_gas_url') || '';
+      const inputEl = document.getElementById('gas-url');
+      if (inputEl) inputEl.value = url;
+    }
+
+    function updateBadges() {
+      const totalWrong = Object.keys(wrongBook).length;
+      document.getElementById('wrong-count').textContent = totalWrong;
+      document.getElementById('train-count').textContent = totalWrong;
+    }
+
+    // ---------------- 1. 順序測驗邏輯 ----------------
+    function renderQuestion() {
+      const q = questions[currentIndex];
+      document.getElementById('q-category').textContent = q.category;
+      document.getElementById('q-text').textContent = `第 ${q.id} 題｜${q.question}`;
+      document.getElementById('q-index').textContent = `${currentIndex + 1} / ${questions.length}`;
+      
+      const optionsContainer = document.getElementById('q-options');
+      const explanationEl = document.getElementById('q-explanation');
+      const syncStatusEl = document.getElementById('q-sync-status');
+      optionsContainer.innerHTML = '';
+      explanationEl.style.display = 'none';
+      syncStatusEl.textContent = '';
+
+      const letters = ['A', 'B', 'C', 'D'];
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = `(${letters[idx]}) ${opt}`;
+        btn.onclick = () => checkAnswer(idx);
+        optionsContainer.appendChild(btn);
+      });
+
+      document.getElementById('btn-prev').disabled = currentIndex === 0;
+      document.getElementById('btn-next').disabled = currentIndex === questions.length - 1;
+      updateBadges();
+    }
+
+    function checkAnswer(selectedIdx) {
+      const q = questions[currentIndex];
+      const buttons = document.querySelectorAll('#q-options .option-btn');
+      buttons.forEach(b => b.disabled = true);
+
+      const explanationEl = document.getElementById('q-explanation');
+      const syncStatusEl = document.getElementById('q-sync-status');
+      const isCorrect = selectedIdx === q.answer;
+
+      buttons[selectedIdx].classList.add(isCorrect ? 'correct' : 'wrong');
+      if (!isCorrect) {
+        buttons[q.answer].classList.add('correct');
+        const prevData = wrongBook[q.id] || {
+          practiceCount: 0,
+          correctCount: 0,
+          wrongCount: 0
+        };
+        wrongBook[q.id] = {
+          id: q.id,
+          category: q.category,
+          question: q.question,
+          options: q.options,
+          answer: q.answer,
+          myChoice: ['A','B','C','D'][selectedIdx],
+          correct: ['A','B','C','D'][q.answer],
+          explanation: q.explanation,
+          practiceCount: prevData.practiceCount,
+          correctCount: prevData.correctCount,
+          wrongCount: (prevData.wrongCount || 0) + 1,
+          status: 'pending' // 待複習
+        };
+      }
+      safeSetItem('ipas_wrong_book', JSON.stringify(wrongBook));
+      updateBadges();
+
+      explanationEl.innerHTML = `
+        <strong>${isCorrect ? '✅ 答對了！' : '❌ 答錯了！已自動加入【錯題專項題庫】'}</strong><br>
+        <strong>正確答案：</strong>(${['A','B','C','D'][q.answer]})<br>
+        <strong>考點解析：</strong>${q.explanation}
+      `;
+      explanationEl.style.display = 'block';
+
+      // 同步發送至 Google Sheets
+      syncToGoogleSheets({
+        subject: '考科一 (全真測驗)',
+        qId: q.id,
+        category: q.category,
+        question: q.question,
+        myChoice: ['A','B','C','D'][selectedIdx],
+        correctAnswer: ['A','B','C','D'][q.answer],
+        isCorrect: isCorrect,
+        explanation: q.explanation,
+        reviewStatus: isCorrect ? '已掌握' : '待複習',
+        syncEl: syncStatusEl
+      });
+    }
+
+    function navigate(delta) {
+      currentIndex += delta;
+      renderQuestion();
+    }
+
+    // ---------------- 2. 錯題專項特訓模式 ----------------
+    function renderWrongTrain() {
+      const wrongList = Object.values(wrongBook);
+      const container = document.getElementById('wrong-train-section');
+      
+      if (wrongList.length === 0) {
+        container.innerHTML = `
+          <div class="card empty-state">
+            <h3 style="color:#1e293b;">🎉 太厲害了！目前沒有任何錯題！</h3>
+            <p>請先前往「全真順序測驗」刷題，凡是答錯的題目都會自動進入這裡獨立練習。</p>
+            <button class="action-btn" onclick="switchMode('quiz')">前往全真測驗</button>
+          </div>
+        `;
+        return;
+      }
+
+      if (wrongTrainIndex >= wrongList.length) {
+        wrongTrainIndex = 0;
+      } else if (wrongTrainIndex < 0) {
+        wrongTrainIndex = wrongList.length - 1;
+      }
+
+      const q = wrongList[wrongTrainIndex];
+      const totalPractices = (q.correctCount || 0) + (q.wrongCount || 0);
+      const accRate = totalPractices > 0 ? Math.round((q.correctCount / totalPractices) * 100) : 0;
+
+      document.getElementById('wt-category').textContent = `🎯 錯題特訓：${q.category}`;
+      document.getElementById('wt-item-rate').textContent = `此題特訓勝率：${accRate}%`;
+      document.getElementById('wt-item-stats').textContent = `已特訓 ${q.practiceCount || 0} 次 ｜ 答對 ${q.correctCount || 0} ｜ 答錯 ${q.wrongCount || 0}`;
+      document.getElementById('wt-text').textContent = `第 ${q.id} 題｜${q.question}`;
+      document.getElementById('wt-index').textContent = `${wrongTrainIndex + 1} / ${wrongList.length}`;
+
+      const optionsContainer = document.getElementById('wt-options');
+      const explanationEl = document.getElementById('wt-explanation');
+      const syncStatusEl = document.getElementById('wt-sync-status');
+      optionsContainer.innerHTML = '';
+      explanationEl.style.display = 'none';
+      syncStatusEl.textContent = '';
+
+      const letters = ['A', 'B', 'C', 'D'];
+      const opts = q.options || questions.find(item => item.id === q.id).options;
+      opts.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = `(${letters[idx]}) ${opt}`;
+        btn.onclick = () => checkWrongTrainAnswer(q, idx);
+        optionsContainer.appendChild(btn);
+      });
+
+      document.getElementById('wt-btn-prev').disabled = wrongList.length <= 1;
+      document.getElementById('wt-btn-next').disabled = wrongList.length <= 1;
+      updateBadges();
+    }
+
+    function checkWrongTrainAnswer(q, selectedIdx) {
+      const buttons = document.querySelectorAll('#wt-options .option-btn');
+      buttons.forEach(b => b.disabled = true);
+
+      const explanationEl = document.getElementById('wt-explanation');
+      const syncStatusEl = document.getElementById('wt-sync-status');
+      const isCorrect = selectedIdx === q.answer;
+
+      buttons[selectedIdx].classList.add(isCorrect ? 'correct' : 'wrong');
+      if (!isCorrect) {
+        buttons[q.answer].classList.add('correct');
+      }
+
+      // 更新錯題統計數據
+      wrongBook[q.id].practiceCount = (wrongBook[q.id].practiceCount || 0) + 1;
+      if (isCorrect) {
+        wrongBook[q.id].correctCount = (wrongBook[q.id].correctCount || 0) + 1;
+        wrongBook[q.id].status = 'mastered'; // 答對即轉為已掌握
+      } else {
+        wrongBook[q.id].wrongCount = (wrongBook[q.id].wrongCount || 0) + 1;
+        wrongBook[q.id].status = 'pending';
+      }
+      safeSetItem('ipas_wrong_book', JSON.stringify(wrongBook));
+      updateBadges();
+
+      const totalPractices = wrongBook[q.id].correctCount + wrongBook[q.id].wrongCount;
+      const accRate = Math.round((wrongBook[q.id].correctCount / totalPractices) * 100);
+      document.getElementById('wt-item-rate').textContent = `此題特訓勝率：${accRate}%`;
+      document.getElementById('wt-item-stats').textContent = `已特訓 ${wrongBook[q.id].practiceCount} 次 ｜ 答對 ${wrongBook[q.id].correctCount} ｜ 答錯 ${wrongBook[q.id].wrongCount}`;
+
+      explanationEl.innerHTML = `
+        <strong>${isCorrect ? '🎉 特訓答對！已自動標記為【🟢 已掌握】！' : '❌ 依然答錯了！別氣餒，再看一次考點解析：'}</strong><br>
+        <strong>正確答案：</strong>(${['A','B','C','D'][q.answer]})<br>
+        <strong>考點解析：</strong>${q.explanation}
+      `;
+      explanationEl.style.display = 'block';
+
+      // 同步發送至 Google Sheets (標註錯題特訓記錄)
+      syncToGoogleSheets({
+        subject: '考科一 (錯題專項特訓)',
+        qId: q.id,
+        category: q.category,
+        question: q.question,
+        myChoice: ['A','B','C','D'][selectedIdx],
+        correctAnswer: ['A','B','C','D'][q.answer],
+        isCorrect: isCorrect,
+        explanation: q.explanation,
+        reviewStatus: wrongBook[q.id].status === 'mastered' ? '已掌握' : '待複習',
+        extraInfo: `特訓勝率 ${accRate}% (練${wrongBook[q.id].practiceCount}次)`,
+        syncEl: syncStatusEl
+      });
+    }
+
+    function navigateWrongTrain(delta) {
+      wrongTrainIndex += delta;
+      renderWrongTrain();
+    }
+
+    // ---------------- 3. 錯題本與完整統計清單 ----------------
+    function renderWrongList() {
+      const container = document.getElementById('wrong-list-content');
+      const list = Object.values(wrongBook);
+      
+      // 計算儀表板總覽數據
+      let totalPractices = 0;
+      let totalCorrect = 0;
+      let totalWrongTimes = 0;
+      let pendingCount = 0;
+
+      list.forEach(item => {
+        totalPractices += (item.practiceCount || 0);
+        totalCorrect += (item.correctCount || 0);
+        totalWrongTimes += (item.wrongCount || 0);
+        if (item.status === 'pending') pendingCount++;
+      });
+
+      const totalAttempts = totalCorrect + totalWrongTimes;
+      const overallAccuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
+
+      document.getElementById('dash-total-wrong').textContent = list.length;
+      document.getElementById('dash-total-practice').textContent = totalPractices;
+      document.getElementById('dash-total-correct').textContent = totalCorrect;
+      document.getElementById('dash-accuracy').textContent = `${overallAccuracy}%`;
+
+      if (list.length === 0) {
+        container.innerHTML = '<div class="empty-state">太棒了！目前沒有錯題紀錄。</div>';
+        return;
+      }
+
+      let html = '';
+      list.forEach(item => {
+        const isMastered = item.status === 'mastered';
+        const pCount = item.practiceCount || 0;
+        const cCount = item.correctCount || 0;
+        const wCount = item.wrongCount || 0;
+        const itemAttempts = cCount + wCount;
+        const itemAccuracy = itemAttempts > 0 ? Math.round((cCount / itemAttempts) * 100) : 0;
+
+        html += `
+          <div class="wrong-card">
+            <div class="wrong-card-header">
+              <div>
+                <span style="font-weight:700; color:var(--primary); margin-right:8px;">第 ${item.id} 題</span>
+                <span class="badge" style="margin-bottom:0;">${item.category}</span>
+                <span class="pill ${isMastered ? 'mastered' : 'pending'}">${isMastered ? '🟢 已掌握' : '🔴 待複習'}</span>
+              </div>
+            </div>
+            <div class="wrong-card-title">${item.question}</div>
+            <div class="wrong-card-stats">
+              <span class="pill count">已練 ${pCount} 次</span>
+              <span class="pill rate">答對率 ${itemAccuracy}%</span>
+              <span class="pill correct">對 ${cCount} 次</span>
+              <span class="pill wrong">錯 ${wCount} 次</span>
+            </div>
+            <div class="wrong-card-details">
+              <div><strong>上次你的答案：</strong><span style="color:red; font-weight:bold;">${item.myChoice}</span> ｜ <strong>正確答案：</strong><span style="color:green; font-weight:bold;">${item.correct}</span></div>
+              <div style="margin-top:4px;"><strong>解析：</strong>${item.explanation}</div>
+            </div>
+            <div class="wrong-card-actions">
+              <button class="btn-sm primary" onclick="startSingleTrain(${item.id})">🎯 特訓此題</button>
+              <button class="btn-sm ${isMastered ? '' : 'success'}" onclick="toggleStatus(${item.id})">
+                ${isMastered ? '🔄 標記待複習' : '✅ 標記已掌握'}
+              </button>
+              <button class="btn-sm danger" onclick="removeWrongItem(${item.id})">🗑️ 移除</button>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    function startSingleTrain(qId) {
+      const list = Object.values(wrongBook);
+      const targetIdx = list.findIndex(item => item.id === qId);
+      if (targetIdx !== -1) {
+        wrongTrainIndex = targetIdx;
+        switchMode('wrong-train');
+      }
+    }
+
+    function toggleStatus(qId) {
+      if (!wrongBook[qId]) return;
+      wrongBook[qId].status = wrongBook[qId].status === 'mastered' ? 'pending' : 'mastered';
+      safeSetItem('ipas_wrong_book', JSON.stringify(wrongBook));
+      renderWrongList();
+      updateBadges();
+    }
+
+    function removeWrongItem(qId) {
+      delete wrongBook[qId];
+      safeSetItem('ipas_wrong_book', JSON.stringify(wrongBook));
+      renderWrongList();
+      updateBadges();
+    }
+
+    // ---------------- 4. 模式切換與雲端同步 ----------------
+    function switchMode(newMode) {
+      mode = newMode;
+      document.getElementById('btn-quiz-mode').classList.toggle('active', mode === 'quiz');
+      document.getElementById('btn-wrong-train-mode').classList.toggle('active', mode === 'wrong-train');
+      document.getElementById('btn-wrong-list-mode').classList.toggle('active', mode === 'wrong-list');
+
+      document.getElementById('quiz-section').style.display = mode === 'quiz' ? 'block' : 'none';
+      document.getElementById('wrong-train-section').style.display = mode === 'wrong-train' ? 'block' : 'none';
+      document.getElementById('wrong-list-section').style.display = mode === 'wrong-list' ? 'block' : 'none';
+
+      if (mode === 'quiz') {
+        renderQuestion();
+      } else if (mode === 'wrong-train') {
+        renderWrongTrain();
+      } else if (mode === 'wrong-list') {
+        renderWrongList();
+      }
+    }
+
+    function syncToGoogleSheets(payload) {
+      const gasUrl = safeGetItem('ipas_gas_url');
+      if (!gasUrl) return;
+
+      if (payload.syncEl) {
+        payload.syncEl.textContent = '⏳ 正在寫入 Google 試算表...';
+      }
+
+      fetch(gasUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: payload.subject,
+          qId: payload.qId,
+          category: payload.category,
+          question: payload.question,
+          myChoice: payload.myChoice,
+          correctAnswer: payload.correctAnswer,
+          isCorrect: payload.isCorrect,
+          explanation: payload.explanation,
+          reviewStatus: payload.reviewStatus,
+          extraInfo: payload.extraInfo || ''
+        })
+      }).then(() => {
+        if (payload.syncEl) {
+          payload.syncEl.textContent = '✅ 已成功同步寫入試算表！';
+        }
+      }).catch(err => {
+        if (payload.syncEl) {
+          payload.syncEl.textContent = '⚠️ 寫入失敗，請確認後台網址。';
+        }
+      });
+    }
+
+    initGasUrl();
+    renderQuestion();
+  </script>
+</body>
+</html>
