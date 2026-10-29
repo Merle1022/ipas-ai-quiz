@@ -18,6 +18,7 @@
       --border: #e2e8f0;
       --radius: 12px;
     }
+    *, *::before, *::after { box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: var(--bg);
@@ -26,7 +27,9 @@
       margin: 0;
       padding: 16px;
     }
+    button, select, input { min-height: 44px; }
     .container {
+      width: 100%;
       max-width: 760px;
       margin: 0 auto;
     }
@@ -34,6 +37,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
       margin-bottom: 16px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--border);
@@ -52,13 +57,16 @@
       font-size: 0.85rem;
     }
     .config-box input {
-      width: calc(100% - 100px);
+      display: block;
+      width: 100%;
       padding: 6px 10px;
       border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 0.85rem;
+      margin: 8px 0;
     }
     .config-box button {
+      display: block;
       padding: 6px 12px;
       background: var(--primary);
       color: white;
@@ -69,6 +77,7 @@
     .nav-tabs {
       display: flex;
       gap: 8px;
+      flex-wrap: wrap;
     }
     .nav-tabs button {
       background: white;
@@ -188,11 +197,18 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       background: white;
+      max-width: 100%;
+      min-width: 0;
     }
+    .exam-controls button { max-width: 100%; white-space: normal; }
     .review-item {
       border-top: 1px solid var(--border);
       padding: 14px 0;
     }
+    .mode-panel { margin: 12px 0; padding: 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; }
+    .mode-panel p, .mode-panel small, #quiz-section > p { overflow-wrap: anywhere; word-break: break-word; }
+    #question-bank-file { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+    .timer { color:#b91c1c; font-weight:800; font-size:1.15rem; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -214,7 +230,7 @@
     <header>
       <h1>iPAS AI 應用規劃師（初級）</h1>
       <div class="nav-tabs">
-        <button id="btn-quiz-mode" class="active" onclick="switchMode('quiz')">隨機考卷</button>
+        <button id="btn-quiz-mode" class="active" onclick="switchMode('quiz')">選擇練習模式</button>
         <button id="btn-wrong-mode" onclick="switchMode('wrong')">錯題本 (<span id="wrong-count">0</span>)</button>
       </div>
     </header>
@@ -226,15 +242,47 @@
     </div>
 
     <div id="quiz-section">
-      <p style="font-size:.9rem;color:#475569;">題庫 60 題；正式初級考試分兩科、每科 75 分鐘。本練習可分次完成，不限時。題目與選項隨機排序；交卷前可改答案，交卷後才顯示解析。非官方試題。</p>
+      <p style="font-size:.9rem;color:#475569;">選擇每日刷題、綜合練習、年度官方考古題或限時模擬。正式初級考試分兩科，每科 75 分鐘；本工具的模擬題庫仍是非官方原創練習題。</p>
+      <div class="mode-panel">
+        <div class="exam-controls">
+          <label for="practice-mode">模式</label>
+          <select id="practice-mode" onchange="selectPracticeMode()">
+            <option value="comprehensive">綜合練習｜現有全部題庫</option>
+            <option value="daily">每日刷題｜隨機 10 題</option>
+            <option value="official">年度考古題｜官方公告試題</option>
+            <option value="simulation">完整模擬｜單科限時 75 分鐘</option>
+          </select>
+          <label id="paper-label" for="paper-select" style="display:none">年度／梯次</label>
+          <select id="paper-select" style="display:none" onchange="updateOfficialPaperLink()">
+            <option value="114-4">114 年第 4 梯次</option>
+            <option value="115-1">115 年第 1 梯次</option>
+            <option value="115-2">115 年第 2 梯次</option>
+            <option value="115-3">115 年第 3 梯次</option>
+          </select>
+          <label id="official-subject-label" for="official-subject" style="display:none">科目</label>
+          <select id="official-subject" style="display:none" onchange="updateOfficialPaperLink()">
+            <option value="one">第一科｜人工智慧基礎概論</option>
+            <option value="two">第二科｜生成式 AI 應用與規劃</option>
+          </select>
+        </div>
+        <p id="mode-description" style="margin:8px 0 0;color:#334155">綜合練習會從目前已收錄的所有原創題目抽卷；隨著公開題庫擴充，抽題範圍會一併增加。</p>
+        <a id="official-paper-link" href="https://ipd.nat.gov.tw/ipas/certification/AIAP/learning-resources" target="_blank" rel="noopener" style="display:none">前往 iPAS 官方歷屆考題（選定梯次）</a>
+        <div id="private-bank-import" style="margin-top:12px">
+          <label for="question-bank-file"><strong>加入自己的雲端資料題庫（JSON）</strong></label>
+          <input id="question-bank-file" type="file" accept=".json,application/json" style="display:block;margin-top:6px">
+          <small>匯入只存在這個瀏覽器的本機儲存，不會上傳到網站或 GitHub。可把 Google Drive／NotebookLM 的學習內容整理成原創題目後匯入。</small>
+          <p id="question-bank-status" aria-live="polite" style="margin:4px 0;color:#334155"></p>
+        </div>
+      </div>
       <div class="exam-controls">
-        <label for="subject-select">練習範圍</label>
+        <label for="subject-select">考科</label>
         <select id="subject-select">
           <option value="all">兩科混合（60 題）</option>
           <option value="one">考科一（35 題）</option>
           <option value="two">考科二（25 題）</option>
         </select>
-        <button class="action-btn secondary" id="btn-switch-subject" onclick="changeSubject()">切換並開始新卷</button>
+        <button class="action-btn secondary" id="btn-switch-subject" onclick="changeSubject()">開始／切換考卷</button>
+        <span id="exam-timer" class="timer" aria-live="polite" style="display:none"></span>
       </div>
       <p id="practice-progress" aria-live="polite" style="font-weight:600;color:#334155;"></p>
       <div class="card">
@@ -392,8 +440,38 @@
     ];
 
     questions.push(...extraQuestions);
+    const CUSTOM_BANK_KEY = 'ipas_private_question_bank_v1';
     const EXAM_KEY = 'ipas_exam_session_v2';
     const PROGRESS_KEY = 'ipas_exam_progress_v2';
+    let customQuestions = [];
+    try { customQuestions = JSON.parse(localStorage.getItem(CUSTOM_BANK_KEY) || '[]'); }
+    catch { customQuestions = []; }
+    if (!Array.isArray(customQuestions)) customQuestions = [];
+    customQuestions = customQuestions.filter(q => q && Number.isInteger(q.id) && typeof q.category === 'string' &&
+      typeof q.question === 'string' && Array.isArray(q.options) && q.options.length === 4 &&
+      Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4 && typeof q.explanation === 'string');
+    questions.push(...customQuestions);
+    document.getElementById('question-bank-status').textContent = customQuestions.length
+      ? `這個瀏覽器已載入 ${customQuestions.length} 題個人題庫；綜合練習會一併抽題。`
+      : '目前沒有個人題庫。JSON 格式可參考 repo 的 question-bank-template.json。';
+    const OFFICIAL_PAPERS = {
+      '114-4': {
+        one: 'https://www.ipas.org.tw/api/proxy/uploads/certification_resource/bf93f438f7be48d295c1b40a34d79f3d/114年第四梯次初級AI應用規劃師第一科人工智慧基礎概論(當次試題公告114_20251226000442.pdf',
+        two: 'https://www.ipas.org.tw/api/proxy/uploads/certification_resource/bf93f438f7be48d295c1b40a34d79f3d/114年第四梯次初級AI應用規劃師第二科生成式AI應用與規劃(當次試題公告114_20251226000507.pdf'
+      },
+      '115-1': {
+        one: 'https://www.ipas.org.tw/api/proxy/uploads/certification_resource/bf93f438f7be48d295c1b40a34d79f3d/115年第一次初級AI應用規劃師_第一科_人工智慧基礎概論_公告試題_20260410164304.pdf',
+        two: 'https://www.ipas.org.tw/api/proxy/uploads/certification_resource/bf93f438f7be48d295c1b40a34d79f3d/115年第一次初級AI應用規劃師_第二科_生成式AI應用與規劃_公告試題_20260410164328.pdf'
+      },
+      '115-2': {
+        one: 'https://www.ipas.org.tw/api/proxy/uploads/certification_resource/bf93f438f7be48d295c1b40a34d79f3d/115年第二次初級AI應用規劃師_第一科_人工智慧基礎概論_公告試題_20260604212644.pdf',
+        two: 'https://www.ipas.org.tw/api/proxy/uploads/certification_resource/bf93f438f7be48d295c1b40a34d79f3d/115年第二次初級AI應用規劃師_第二科_生成式AI應用與規劃_公告試題_20260604212719.pdf'
+      },
+      '115-3': {
+        one: 'https://www.ipas.org.tw/api/proxy/uploads/certification_resource/bf93f438f7be48d295c1b40a34d79f3d/115年第三次初級AI應用規劃師_第一科_人工智慧基礎概論_公告試題_20260906220418.pdf',
+        two: 'https://www.ipas.org.tw/api/proxy/uploads/certification_resource/bf93f438f7be48d295c1b40a34d79f3d/115年第三次初級AI應用規劃師_第二科_生成式AI應用與規劃_公告試題_20260906220452.pdf'
+      }
+    };
     const todayKey = () => new Date().toLocaleDateString('en-CA');
     const loadJson = (key, fallback) => {
       try { return JSON.parse(localStorage.getItem(key)) || fallback; }
@@ -412,6 +490,10 @@
     let currentIndex = 0;
     let examFinished = false;
     let mode = 'quiz';
+    let practiceMode = localStorage.getItem('ipas_practice_mode') || 'comprehensive';
+    if (!['comprehensive', 'daily', 'official', 'simulation'].includes(practiceMode)) practiceMode = 'comprehensive';
+    let deadline = null;
+    let timerHandle = null;
     let subject = localStorage.getItem('ipas_subject_mode') || 'all';
     if (!['all', 'one', 'two'].includes(subject)) subject = 'all';
     let progress = loadJson(PROGRESS_KEY, { date: todayKey(), todayCount: 0, seen: [] });
@@ -433,16 +515,23 @@
         localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
       }
       document.getElementById('practice-progress').textContent =
-        `今日已答 ${progress.todayCount} 題｜本輪題庫已練 ${progress.seen.length}/${questions.length} 題｜這份考卷已答 ${Object.keys(answers).length}/${paper.length} 題`;
+        `今日已答 ${progress.todayCount} 題｜本輪已練 ${progress.seen.length}/${questions.length} 題｜這份考卷已答 ${Object.keys(answers).length}/${paper.length} 題`;
     }
 
     function saveExam() {
-      localStorage.setItem(EXAM_KEY, JSON.stringify({ paper, answers, currentIndex, subject }));
+      localStorage.setItem(EXAM_KEY, JSON.stringify({ paper, answers, currentIndex, subject, practiceMode, deadline }));
       localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
       updateProgress();
     }
 
     function startExam() {
+      if (practiceMode === 'official') return;
+      practiceMode = document.getElementById('practice-mode').value;
+      if (practiceMode === 'simulation' && subject === 'all') {
+        subject = 'one';
+        document.getElementById('subject-select').value = subject;
+      }
+      localStorage.setItem('ipas_practice_mode', practiceMode);
       localStorage.setItem('ipas_subject_mode', subject);
       const pool = subjectPool();
       let available = pool.filter(q => !progress.seen.includes(q.id));
@@ -451,13 +540,17 @@
         progress.seen = progress.seen.filter(id => !ids.has(id));
         available = pool;
       }
-      paper = shuffle(available).map(q => {
+      const selectedPool = practiceMode === 'simulation' ? shuffle(pool) :
+        practiceMode === 'daily' ? shuffle(available).slice(0, 10) : available;
+      paper = shuffle(selectedPool).map(q => {
         const order = shuffle([0, 1, 2, 3]);
         return { ...q, options: order.map(i => q.options[i]), answer: order.indexOf(q.answer) };
       });
       answers = {};
       currentIndex = 0;
       examFinished = false;
+      deadline = practiceMode === 'simulation' ? Date.now() + 75 * 60 * 1000 : null;
+      if (timerHandle) clearInterval(timerHandle);
       document.getElementById('exam-result').style.display = 'none';
       document.getElementById('quiz-section').querySelector('.card').style.display = 'block';
       document.querySelector('#quiz-section .actions').style.display = 'flex';
@@ -465,6 +558,70 @@
       document.getElementById('subject-select').value = subject;
       saveExam();
       renderQuestion();
+      renderTimer();
+      if (deadline) timerHandle = setInterval(renderTimer, 1000);
+    }
+
+    function selectPracticeMode() {
+      const nextMode = document.getElementById('practice-mode').value;
+      const modeChanged = nextMode !== practiceMode;
+      if (modeChanged && paper.length && !examFinished && Object.keys(answers).length &&
+          !confirm('切換模式會結束目前考卷；已作答題目仍計入今日進度。要繼續嗎？')) {
+        document.getElementById('practice-mode').value = practiceMode;
+        return;
+      }
+      if (modeChanged && nextMode === 'official') {
+        if (timerHandle) clearInterval(timerHandle);
+        timerHandle = null;
+        deadline = null;
+        localStorage.removeItem(EXAM_KEY);
+      }
+      practiceMode = nextMode;
+      localStorage.setItem('ipas_practice_mode', practiceMode);
+      const official = practiceMode === 'official';
+      document.getElementById('paper-label').style.display = official ? 'inline' : 'none';
+      document.getElementById('paper-select').style.display = official ? 'inline-block' : 'none';
+      document.getElementById('official-paper-link').style.display = official ? 'inline-block' : 'none';
+      document.getElementById('official-subject-label').style.display = official ? 'inline' : 'none';
+      document.getElementById('official-subject').style.display = official ? 'inline-block' : 'none';
+      document.getElementById('btn-switch-subject').style.display = official ? 'none' : 'inline-block';
+      document.getElementById('subject-select').style.display = official ? 'none' : 'inline-block';
+      document.getElementById('exam-timer').style.display = official ? 'none' : 'inline';
+      document.querySelector('#quiz-section .card').style.display = official ? 'none' : 'block';
+      document.querySelector('#quiz-section .actions').style.display = official ? 'none' : 'flex';
+      document.getElementById('btn-finish').style.display = official ? 'none' : 'inline-block';
+      const descriptions = {
+      comprehensive: `從目前已收錄的全部 ${questions.length} 題抽卷（包含內建題庫與此瀏覽器匯入的個人題庫）。未匯入的私人雲端文件不會自動出現在題庫。`,
+        daily: '每天隨機抽 10 題，適合短時間複習；按「完成並對答案」可提早結束。',
+        official: '官方公告試題由 iPAS 提供 PDF。選擇年度梯次與科目後，直接開啟官方 PDF；本網站不重新發布官方試卷。',
+        simulation: '單科限時 75 分鐘，可跳題、改答案或留白，到時自動交卷。本站每科現有題數為 35／25 題，尚未達官方試卷完整題數，因此目前是計時模擬，不能宣稱題數完全復刻。'
+      };
+      document.getElementById('mode-description').textContent = descriptions[practiceMode];
+      if (official) updateOfficialPaperLink();
+      else if (examFinished || (modeChanged && paper.length)) startExam();
+      else if (paper.length) renderQuestion();
+    }
+
+    function updateOfficialPaperLink() {
+      const session = document.getElementById('paper-select').value;
+      const label = document.getElementById('paper-select').selectedOptions[0].textContent;
+      const examSubject = document.getElementById('official-subject').selectedOptions[0].textContent;
+      const link = document.getElementById('official-paper-link');
+      const subjectKey = document.getElementById('official-subject').value;
+      link.href = encodeURI(OFFICIAL_PAPERS[session][subjectKey]);
+      link.textContent = `下載 ${label}｜${examSubject} 官方公告試題 PDF`;
+      link.setAttribute('aria-label', `下載 ${label} ${examSubject} 官方公告試題 PDF`);
+    }
+
+    function renderTimer() {
+      const timer = document.getElementById('exam-timer');
+      if (!deadline || examFinished) { timer.style.display = 'none'; return; }
+      const remaining = Math.max(0, deadline - Date.now());
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      timer.style.display = 'inline';
+      timer.textContent = `剩餘 ${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+      if (remaining === 0) finishExam(true);
     }
 
     function changeSubject() {
@@ -482,6 +639,36 @@
       const url = document.getElementById('gas-url').value.trim();
       localStorage.setItem('ipas_gas_url', url);
       alert('後台網址已儲存！');
+    }
+
+    async function importQuestionBank(file) {
+      if (!file) return;
+      const status = document.getElementById('question-bank-status');
+      try {
+        const parsed = JSON.parse(await file.text());
+        const rows = Array.isArray(parsed) ? parsed : parsed.questions;
+        if (!Array.isArray(rows) || rows.length < 1 || rows.length > 500) throw new Error('JSON 需包含 1 到 500 題的 questions 陣列。');
+        const existingIds = new Set(questions.map(q => q.id));
+        const imported = rows.map((q, index) => {
+          if (!q || typeof q.category !== 'string' || typeof q.question !== 'string' ||
+              !Array.isArray(q.options) || q.options.length !== 4 || q.options.some(x => typeof x !== 'string') ||
+              !Number.isInteger(q.answer) || q.answer < 0 || q.answer > 3 || typeof q.explanation !== 'string') {
+            throw new Error(`第 ${index + 1} 題格式不完整。每題需有 category、question、4 個 options、0 到 3 的 answer 和 explanation。`);
+          }
+          let id = 100000 + index;
+          while (existingIds.has(id)) id++;
+          existingIds.add(id);
+          return { id, category: q.category, question: q.question,
+            options: q.options, answer: q.answer,
+            explanation: `${q.explanation}${q.source ? `\n來源：${q.source}` : ''}` };
+        });
+        localStorage.setItem(CUSTOM_BANK_KEY, JSON.stringify(imported));
+        localStorage.removeItem(EXAM_KEY);
+        status.textContent = `已在此瀏覽器匯入 ${imported.length} 題；重新載入後綜合練習會包含個人題庫。`;
+        setTimeout(() => location.reload(), 900);
+      } catch (error) {
+        status.textContent = `匯入失敗：${error.message}`;
+      }
     }
 
     function initGasUrl() {
@@ -545,7 +732,7 @@
       renderQuestion();
     }
 
-    function finishExam() {
+    function finishExam(timeExpired = false) {
       if (examFinished) return;
       const attempted = paper.filter(q => answers[q.id] !== undefined);
       if (!attempted.length) {
@@ -553,6 +740,8 @@
         return;
       }
       examFinished = true;
+      if (timerHandle) clearInterval(timerHandle);
+      deadline = null;
       localStorage.removeItem(EXAM_KEY);
       const score = attempted.filter(q => answers[q.id] === q.answer).length;
       document.getElementById('quiz-section').querySelector('.card').style.display = 'none';
@@ -561,9 +750,12 @@
       const result = document.getElementById('exam-result');
       result.replaceChildren();
       const heading = document.createElement('h2');
-      heading.textContent = `本次已答 ${attempted.length} 題，答對 ${score} 題`;
+      const estimatedScore = paper.length ? Math.round(score / paper.length * 100) : 0;
+      heading.textContent = practiceMode === 'simulation'
+        ? `單科模擬答對 ${score}/${paper.length} 題｜練習換算 ${estimatedScore}/100 ${estimatedScore >= 70 ? '（達到 70 分練習門檻）' : '（未達 70 分練習門檻）'}`
+        : `本次已答 ${attempted.length} 題，答對 ${score} 題`;
       const note = document.createElement('p');
-      note.textContent = `另有 ${paper.length - attempted.length} 題未作答，下次會優先從本輪未練過的題目抽選。這是練習紀錄，不是正式考試成績。`;
+      note.textContent = `${timeExpired ? '時間到，系統已自動交卷。' : ''}另有 ${paper.length - attempted.length} 題未作答；下次會從尚未練過的題目隨機抽選。${practiceMode === 'simulation' ? '這是依目前題庫換算的練習分數，並非正式成績。' : '這是練習紀錄，不是正式考試成績。'}`;
       const button = document.createElement('button');
       button.className = 'action-btn';
       button.textContent = '開始新考卷';
@@ -653,7 +845,11 @@
     }
 
     initGasUrl();
+    document.getElementById('question-bank-file').addEventListener('change', event => importQuestionBank(event.target.files[0]));
     const savedExam = loadJson(EXAM_KEY, null);
+    document.getElementById('practice-mode').value = practiceMode;
+    document.getElementById('subject-select').value = subject;
+    selectPracticeMode();
     if (savedExam && Array.isArray(savedExam.paper) && savedExam.paper.length &&
         ['all', 'one', 'two'].includes(savedExam.subject) &&
         savedExam.paper.every(q => Number.isInteger(q.id) &&
@@ -664,8 +860,13 @@
       answers = savedExam.answers && typeof savedExam.answers === 'object' ? savedExam.answers : {};
       currentIndex = Math.max(0, Math.min(paper.length - 1, Number(savedExam.currentIndex) || 0));
       subject = savedExam.subject;
+      practiceMode = ['comprehensive','daily','simulation'].includes(savedExam.practiceMode) ? savedExam.practiceMode : 'comprehensive';
+      deadline = Number.isFinite(savedExam.deadline) && savedExam.deadline > 0 ? savedExam.deadline : null;
+      document.getElementById('practice-mode').value = practiceMode;
+      selectPracticeMode();
       document.getElementById('subject-select').value = subject;
       renderQuestion();
+      if (deadline && practiceMode === 'simulation') { renderTimer(); timerHandle = setInterval(renderTimer, 1000); }
     } else {
       startExam();
     }
