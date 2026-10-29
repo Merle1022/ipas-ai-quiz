@@ -4,9 +4,9 @@
 
 線上測驗統一使用上方 Netlify 網址。GitHub 倉庫保存公開的網站程式、題庫、說明與版本紀錄；不保存訪客的瀏覽器作答紀錄、你自己的 Google 試算表資料、Apps Script 專案或 Netlify 後台設定。若要完整備份個人學習資料，請另行備份試算表與相關設定。
 
-給 iPAS AI 應用規劃師初級備考者的**非官方練習工具**。目前內建題庫 60 題（考科一 35 題、考科二 25 題）。提供四種入口：綜合練習（目前收錄的全部題庫）、每日隨機 10 題、年度／梯次官方公告試題連結，以及每科 75 分鐘的計時模擬。官方公告試題為每科 50 題，由 iPAS 學習資源頁直接提供 PDF；本站不重新發布官方試卷。計時模擬使用目前該科題庫並隨機出題，題庫至少 50 題時抽 50 題，未達時會出該科全部題目。匯入個人題庫可補足自訂知識題數，但不會變成官方考古題。所有應用程式內的考卷都可提早交卷；練習題交卷後顯示解析。
+給 iPAS AI 應用規劃師初級備考者的**非官方練習工具**。目前內建題庫 60 題（考科一 35 題、考科二 25 題）。提供五種入口：綜合練習（目前收錄的全部題庫）、每日隨機 10 題、我的匯入題庫、年度／梯次官方公告試題連結，以及每科 75 分鐘的計時模擬。官方公告試題為每科 50 題，由 iPAS 學習資源頁直接提供 PDF；本站不重新發布官方試卷。計時模擬使用目前該科題庫並隨機出題，題庫至少 50 題時抽 50 題，未達時會出該科全部題目。匯入個人題庫可補足自訂知識題數，但不會變成官方考古題。所有應用程式內的考卷都可提早交卷；練習題交卷後顯示解析。
 
-網站內的綜合、每日與計時練習會從內建題庫加上「目前瀏覽器匯入的個人題庫」抽題。網站不會連線讀取 Google Drive、NotebookLM 或私人試算表；你可以先用 [`question-bank-generation-prompt.md`](question-bank-generation-prompt.md) 請 Gemini 從已連結的 Drive 整理原創題目 JSON，再由頁面匯入。匯入內容只存在該瀏覽器的 `localStorage`，不會傳到網站或 GitHub；換裝置或清除網站資料前，請保留原始 JSON 備份。格式範例見 [`question-bank-template.json`](question-bank-template.json)。若要參加單科練習，`category` 請以 `考科一｜` 或 `考科二｜` 開頭。不要把含個資、私人筆記或未授權的講義／考題提交到公開 repo。官方年度試題在網站內直接連到 [iPAS 公告試題 PDF](https://ipd.nat.gov.tw/ipas/certification/AIAP/learning-resources)。
+網站內的綜合、每日與計時練習會從內建題庫加上「目前瀏覽器匯入的個人題庫」抽題；「我的匯入題庫」則只用個人匯入題目出卷。網站不會連線讀取 Google Drive、NotebookLM 或私人試算表；請先用 [`question-bank-generation-prompt.md`](question-bank-generation-prompt.md) 請 Gemini 從已連結的 Drive 整理原創題目 JSON，複製 Gemini 的 JSON 物件，貼到頁面並按「匯入並開始作答」，就會立即開始個人題庫測驗；也可選 JSON 檔匯入。匯入內容只存在該瀏覽器的 `localStorage`，不會傳到網站或 GitHub；換裝置或清除網站資料前，請保留原始 JSON 備份。格式範例見 [`question-bank-template.json`](question-bank-template.json)。若要參加單科練習，`category` 請以 `考科一｜` 或 `考科二｜` 開頭。不要把含個資、私人筆記或未授權的講義／考題提交到公開 repo。官方年度試題在網站內直接連到 [iPAS 公告試題 PDF](https://ipd.nat.gov.tw/ipas/certification/AIAP/learning-resources)。
 
 依 [iPAS 115 年度簡章](https://www.ipas.org.tw/api/proxy/uploads/certification/AIAP/115%E5%B9%B4%E5%BA%A6AI%E6%87%89%E7%94%A8%E8%A6%8F%E5%8A%83%E5%B8%AB%E8%83%BD%E5%8A%9B%E9%91%91%E5%AE%9A%E7%B0%A1%E7%AB%A0%28%E5%88%9D%E3%80%81%E4%B8%AD%E7%B4%9A%29_20251225235744.pdf)，正式初級考試分兩科、各 75 分鐘，採電腦單選；結束前可改答案或留白。本站非計時練習可分次作答；模擬模式則提供單科 75 分鐘倒數，均允許跳題、改答案或提早交卷，練習題在交卷後顯示解析。本站模擬題量、考試流程細節和成績仍不等於完整正式考試。
 

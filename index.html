@@ -250,6 +250,7 @@
           <select id="practice-mode" onchange="selectPracticeMode()">
             <option value="comprehensive">綜合練習｜現有全部題庫</option>
             <option value="daily">每日刷題｜隨機 10 題</option>
+            <option value="custom">我的匯入題庫</option>
             <option value="official">年度考古題｜官方公告試題</option>
             <option value="simulation">完整模擬｜單科限時 75 分鐘</option>
           </select>
@@ -269,10 +270,21 @@
         <p id="mode-description" style="margin:8px 0 0;color:#334155">綜合練習會從目前已收錄的所有原創題目抽卷；隨著公開題庫擴充，抽題範圍會一併增加。</p>
         <a id="official-paper-link" href="https://ipd.nat.gov.tw/ipas/certification/AIAP/learning-resources" target="_blank" rel="noopener" style="display:none">前往 iPAS 官方歷屆考題（選定梯次）</a>
         <div id="private-bank-import" style="margin-top:12px">
-          <label for="question-bank-file"><strong>加入自己的雲端資料題庫（JSON）</strong></label>
-          <input id="question-bank-file" type="file" accept=".json,application/json" style="display:block;margin-top:6px">
-          <small>匯入只存在這個瀏覽器的本機儲存，不會上傳到網站或 GitHub。可把 Google Drive／NotebookLM 的學習內容整理成原創題目後匯入。</small>
-          <p style="margin:6px 0"><a href="https://github.com/Merle1022/ipas-ai-quiz/blob/main/question-bank-generation-prompt.md" target="_blank" rel="noopener">開啟 Gemini Drive 題庫提示詞</a> · <a href="https://github.com/Merle1022/ipas-ai-quiz/blob/main/question-bank-template.json" target="_blank" rel="noopener">JSON 題目範本</a></p>
+          <strong>把 Gemini 題目直接匯入並開始作答</strong>
+          <ol style="margin:6px 0 8px;padding-left:22px">
+            <li><a href="https://github.com/Merle1022/ipas-ai-quiz/blob/main/question-bank-generation-prompt.md" target="_blank" rel="noopener">開啟 Gemini Drive 題庫提示詞</a>，讓 Gemini 根據你的 Drive 資料產生題目。</li>
+            <li>複製 Gemini 回覆的 JSON，貼到下方後按「匯入並開始作答」。</li>
+          </ol>
+          <label for="question-bank-json">Gemini 題目 JSON</label>
+          <textarea id="question-bank-json" rows="7" placeholder='貼上 Gemini 產生的 JSON，例如：{"questions":[...]}' style="display:block;width:100%;box-sizing:border-box;margin:6px 0;padding:10px;border:1px solid var(--border);border-radius:6px;font:inherit"></textarea>
+          <button class="action-btn" type="button" onclick="importQuestionBankText(document.getElementById('question-bank-json').value)">匯入並開始作答</button>
+          <details style="margin-top:10px">
+            <summary>改用 JSON 檔案匯入</summary>
+            <label for="question-bank-file" style="display:block;margin-top:8px">選擇題庫檔案</label>
+            <input id="question-bank-file" type="file" accept=".json,application/json" style="display:block;margin-top:6px">
+            <p style="margin:6px 0"><a href="https://github.com/Merle1022/ipas-ai-quiz/blob/main/question-bank-template.json" target="_blank" rel="noopener">查看 JSON 題目範本</a></p>
+          </details>
+          <small>題庫只會存在此瀏覽器，並立即切換到「我的匯入題庫」作答；不會上傳到網站或 GitHub。</small>
           <p id="question-bank-status" aria-live="polite" style="margin:4px 0;color:#334155"></p>
         </div>
       </div>
@@ -443,6 +455,7 @@
     ];
 
     questions.push(...extraQuestions);
+    const BASE_QUESTION_COUNT = questions.length;
     const CUSTOM_BANK_KEY = 'ipas_private_question_bank_v1';
     const EXAM_KEY = 'ipas_exam_session_v2';
     const PROGRESS_KEY = 'ipas_exam_progress_v2';
@@ -454,7 +467,6 @@
       typeof q.question === 'string' && Array.isArray(q.options) && q.options.length === 4 &&
       Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4 && typeof q.explanation === 'string');
     questions.push(...customQuestions);
-    updateSubjectOptions();
     document.getElementById('question-bank-status').textContent = customQuestions.length
       ? `這個瀏覽器已載入 ${customQuestions.length} 題個人題庫；綜合練習會一併抽題。`
       : '目前沒有個人題庫。';
@@ -496,7 +508,14 @@
     let examFinished = false;
     let mode = 'quiz';
     let practiceMode = localStorage.getItem('ipas_practice_mode') || 'comprehensive';
-    if (!['comprehensive', 'daily', 'official', 'simulation'].includes(practiceMode)) practiceMode = 'comprehensive';
+    if (!['comprehensive', 'daily', 'custom', 'official', 'simulation'].includes(practiceMode)) practiceMode = 'comprehensive';
+    const customModeOption = document.querySelector('#practice-mode option[value="custom"]');
+    customModeOption.disabled = customQuestions.length === 0;
+    if (practiceMode === 'custom' && customQuestions.length === 0) {
+      practiceMode = 'comprehensive';
+      localStorage.setItem('ipas_practice_mode', practiceMode);
+    }
+    updateSubjectOptions();
     let deadline = null;
     let timerHandle = null;
     let subject = localStorage.getItem('ipas_subject_mode') || 'all';
@@ -508,16 +527,22 @@
     if (!wrongBook || Array.isArray(wrongBook) || typeof wrongBook !== 'object') wrongBook = {};
 
     function subjectPool() {
+      if (practiceMode === 'custom') {
+        if (subject === 'one') return customQuestions.filter(q => !q.category.startsWith('考科二'));
+        if (subject === 'two') return customQuestions.filter(q => q.category.startsWith('考科二'));
+        return customQuestions;
+      }
       if (subject === 'one') return questions.filter(q => !q.category.startsWith('考科二'));
       if (subject === 'two') return questions.filter(q => q.category.startsWith('考科二'));
       return questions;
     }
 
     function updateSubjectOptions() {
-      const first = questions.filter(q => !q.category.startsWith('考科二')).length;
-      const second = questions.filter(q => q.category.startsWith('考科二')).length;
+      const pool = practiceMode === 'custom' ? customQuestions : questions;
+      const first = pool.filter(q => !q.category.startsWith('考科二')).length;
+      const second = pool.filter(q => q.category.startsWith('考科二')).length;
       const select = document.getElementById('subject-select');
-      select.options[0].textContent = `兩科混合（${questions.length} 題）`;
+      select.options[0].textContent = `${practiceMode === 'custom' ? '個人題庫' : '兩科混合'}（${pool.length} 題）`;
       select.options[1].textContent = `考科一（${first} 題）`;
       select.options[2].textContent = `考科二（${second} 題）`;
     }
@@ -540,6 +565,10 @@
 
     function startExam() {
       if (practiceMode === 'official') return;
+      if (practiceMode === 'custom' && !customQuestions.length) {
+        document.getElementById('question-bank-status').textContent = '請先貼上 Gemini 題目 JSON 並匯入，才能開始個人題庫測驗。';
+        return;
+      }
       if (pendingAdvanceTimer) clearTimeout(pendingAdvanceTimer);
       pendingAdvanceTimer = null;
       practiceMode = document.getElementById('practice-mode').value;
@@ -608,7 +637,7 @@
       document.getElementById('btn-switch-subject').style.display = official ? 'none' : 'inline-block';
       document.getElementById('subject-select').style.display = official ? 'none' : 'inline-block';
       document.getElementById('exam-timer').style.display = official ? 'none' : 'inline';
-      document.getElementById('private-bank-import').style.display = official ? 'none' : 'block';
+      document.getElementById('private-bank-import').style.display = 'block';
       document.querySelector('#quiz-section .card').style.display = official ? 'none' : 'block';
       document.querySelector('#quiz-section .actions').style.display = official ? 'none' : 'flex';
       document.getElementById('btn-finish').style.display = official ? 'none' : 'inline-block';
@@ -617,6 +646,7 @@
       const descriptions = {
         comprehensive: `從目前已收錄的全部 ${questions.length} 題抽卷（包含內建題庫與此瀏覽器匯入的個人題庫）。未匯入的私人雲端文件不會自動出現在題庫。`,
         daily: `每天從目前題庫隨機抽 ${Math.min(10, questions.length)} 題，適合短時間複習；按「完成並對答案」可提早結束。`,
+        custom: `只從此瀏覽器匯入的 ${customQuestions.length} 題個人題庫隨機出題；每次可重新抽卷。`,
         official: '官方公告試題由 iPAS 提供 PDF。選擇年度梯次與科目後，直接開啟官方 PDF；本網站不重新發布官方試卷。',
         simulation: `單科限時 75 分鐘，可跳題、改答案或留白，到時自動交卷。現有題庫為第一科 ${subjectOneCount} 題、第二科 ${subjectTwoCount} 題；題庫達 50 題時模擬卷抽滿 50 題，未達時會使用該科全部題目。個人匯入題不會標為官方考古題。`
       };
@@ -667,11 +697,18 @@
 
     async function importQuestionBank(file) {
       if (!file) return;
+      importQuestionBankText(await file.text());
+    }
+
+    function importQuestionBankText(rawText) {
       const status = document.getElementById('question-bank-status');
       try {
-        const parsed = JSON.parse(await file.text());
+        const jsonText = rawText.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+        const parsed = JSON.parse(jsonText);
         const rows = Array.isArray(parsed) ? parsed : parsed.questions;
         if (!Array.isArray(rows) || rows.length < 1 || rows.length > 500) throw new Error('JSON 需包含 1 到 500 題的 questions 陣列。');
+        if (!examFinished && Object.keys(answers).length &&
+            !confirm('匯入會切換到個人題庫考卷；目前已作答內容會保留今日紀錄，但離開目前考卷。要繼續嗎？')) return;
         const existingIds = new Set(questions.map(q => q.id));
         const imported = rows.map((q, index) => {
           if (!q || typeof q.category !== 'string' || typeof q.question !== 'string' ||
@@ -687,9 +724,26 @@
             explanation: `${q.explanation}${q.source ? `\n來源：${q.source}` : ''}` };
         });
         localStorage.setItem(CUSTOM_BANK_KEY, JSON.stringify(imported));
+        customQuestions = imported;
+        questions.splice(BASE_QUESTION_COUNT, questions.length - BASE_QUESTION_COUNT, ...customQuestions);
+        customModeOption.disabled = false;
         localStorage.removeItem(EXAM_KEY);
-        status.textContent = `已在此瀏覽器匯入 ${imported.length} 題；重新載入後綜合練習會包含個人題庫。`;
-        setTimeout(() => location.reload(), 900);
+        if (timerHandle) clearInterval(timerHandle);
+        timerHandle = null;
+        paper = [];
+        answers = {};
+        currentIndex = 0;
+        examFinished = false;
+        deadline = null;
+        practiceMode = 'custom';
+        subject = 'all';
+        document.getElementById('practice-mode').value = 'custom';
+        document.getElementById('subject-select').value = 'all';
+        updateSubjectOptions();
+        selectPracticeMode();
+        startExam();
+        document.getElementById('question-bank-json').value = '';
+        status.textContent = `已直接載入 ${imported.length} 題，現在開始「我的匯入題庫」測驗。`;
       } catch (error) {
         status.textContent = `匯入失敗：${error.message}`;
       }
@@ -911,7 +965,7 @@
       answers = savedExam.answers && typeof savedExam.answers === 'object' ? savedExam.answers : {};
       currentIndex = Math.max(0, Math.min(paper.length - 1, Number(savedExam.currentIndex) || 0));
       subject = savedExam.subject;
-      practiceMode = ['comprehensive','daily','simulation'].includes(savedExam.practiceMode) ? savedExam.practiceMode : 'comprehensive';
+      practiceMode = ['comprehensive','daily','custom','simulation'].includes(savedExam.practiceMode) ? savedExam.practiceMode : 'comprehensive';
       deadline = Number.isFinite(savedExam.deadline) && savedExam.deadline > 0 ? savedExam.deadline : null;
       document.getElementById('practice-mode').value = practiceMode;
       selectPracticeMode();
