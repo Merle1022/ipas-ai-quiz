@@ -253,7 +253,7 @@
             <option value="daily">每日刷題｜隨機 10 題</option>
             <option value="custom">我的匯入題庫</option>
             <option value="official">年度考古題｜官方公告試題</option>
-            <option value="simulation">完整模擬｜單科限時 75 分鐘</option>
+            <option value="simulation">完整模擬｜單科 50 題・75 分鐘</option>
           </select>
           <label id="paper-label" for="paper-select" style="display:none">年度／梯次</label>
           <select id="paper-select" style="display:none" onchange="updateOfficialPaperLink()">
@@ -543,18 +543,26 @@
     });
 
     function subjectPool() {
+      const pool = practiceMode === 'simulation' ? simulationQuestionPool() : questions;
       if (practiceMode === 'custom') {
         if (subject === 'one') return customQuestions.filter(q => !q.category.startsWith('考科二'));
         if (subject === 'two') return customQuestions.filter(q => q.category.startsWith('考科二'));
         return customQuestions;
       }
-      if (subject === 'one') return questions.filter(q => !q.category.startsWith('考科二'));
-      if (subject === 'two') return questions.filter(q => q.category.startsWith('考科二'));
-      return questions;
+      if (subject === 'one') return pool.filter(q => !q.category.startsWith('考科二'));
+      if (subject === 'two') return pool.filter(q => q.category.startsWith('考科二'));
+      return pool;
+    }
+
+    function simulationQuestionPool() {
+      const publicPapers = Object.values(officialQuestionBanks || {})
+        .flatMap(session => Object.values(session).flat());
+      return [...questions, ...publicPapers];
     }
 
     function updateSubjectOptions() {
-      const pool = practiceMode === 'custom' ? customQuestions : questions;
+      const pool = practiceMode === 'custom' ? customQuestions
+        : practiceMode === 'simulation' ? simulationQuestionPool() : questions;
       const first = pool.filter(q => !q.category.startsWith('考科二')).length;
       const second = pool.filter(q => q.category.startsWith('考科二')).length;
       const select = document.getElementById('subject-select');
@@ -570,7 +578,7 @@
         localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
       }
       document.getElementById('practice-progress').textContent =
-        `今日已答 ${progress.todayCount} 題｜本輪已練 ${progress.seen.length}/${questions.length} 題｜這份考卷已答 ${Object.keys(answers).length}/${paper.length} 題`;
+        `今日已答 ${progress.todayCount} 題｜本輪已練 ${progress.seen.length}/${practiceMode === 'simulation' ? simulationQuestionPool().length : questions.length} 題｜這份考卷已答 ${Object.keys(answers).length}/${paper.length} 題`;
     }
 
     function saveExam() {
@@ -674,6 +682,7 @@
       }
       practiceMode = nextMode;
       localStorage.setItem('ipas_practice_mode', practiceMode);
+      updateSubjectOptions();
       const official = practiceMode === 'official';
       document.getElementById('paper-label').style.display = official ? 'inline' : 'none';
       document.getElementById('paper-select').style.display = official ? 'inline-block' : 'none';
@@ -687,14 +696,15 @@
       document.querySelector('#quiz-section .card').style.display = 'block';
       document.querySelector('#quiz-section .actions').style.display = 'flex';
       document.getElementById('btn-finish').style.display = 'inline-block';
-      const subjectOneCount = questions.filter(q => !q.category.startsWith('考科二')).length;
-      const subjectTwoCount = questions.filter(q => q.category.startsWith('考科二')).length;
+      const descriptionPool = practiceMode === 'simulation' ? simulationQuestionPool() : questions;
+      const subjectOneCount = descriptionPool.filter(q => !q.category.startsWith('考科二')).length;
+      const subjectTwoCount = descriptionPool.filter(q => q.category.startsWith('考科二')).length;
       const descriptions = {
         comprehensive: `從目前已收錄的全部 ${questions.length} 題抽卷（包含內建題庫與此瀏覽器匯入的個人題庫）。未匯入的私人雲端文件不會自動出現在題庫。`,
         daily: `每天從目前題庫隨機抽 ${Math.min(10, questions.length)} 題，適合短時間複習；按「完成並對答案」可提早結束。`,
         custom: `只從此瀏覽器匯入的 ${customQuestions.length} 題個人題庫隨機出題；每次可重新抽卷。`,
         official: '選擇年度梯次與科目後，50 題官方公告試題會直接載入本站作答；答案順序依原卷保留。可開啟官方公告核對原始試題。',
-        simulation: `單科限時 75 分鐘，可跳題、改答案或留白，到時自動交卷。現有題庫為第一科 ${subjectOneCount} 題、第二科 ${subjectTwoCount} 題；題庫達 50 題時模擬卷抽滿 50 題，未達時會使用該科全部題目。個人匯入題不會標為官方考古題。`
+        simulation: `單科限時 75 分鐘，從該科所有內建與官方歷屆題目隨機抽滿 50 題，可跳題、改答案或留白，到時自動交卷。每科題庫目前為 ${subjectOneCount}／${subjectTwoCount} 題；個人匯入題也會加入抽題範圍。`
       };
       document.getElementById('mode-description').textContent = descriptions[practiceMode];
       if (official) {
