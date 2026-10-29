@@ -210,6 +210,7 @@
     .mode-panel p, .mode-panel small, #quiz-section > p { overflow-wrap: anywhere; word-break: break-word; }
     #question-bank-file { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
     .timer { color:#b91c1c; font-weight:800; font-size:1.15rem; }
+    #btn-doubt[aria-pressed="true"] { background:#7c2d12; box-shadow:0 0 0 3px #fed7aa; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -243,7 +244,7 @@
     </div>
 
     <div id="quiz-section">
-      <p style="font-size:.9rem;color:#475569;">選擇每日刷題、綜合練習、年度官方考古題或限時模擬。正式初級考試分兩科，每科 75 分鐘；本工具的模擬題庫仍是非官方原創練習題。</p>
+      <p style="font-size:.9rem;color:#475569;">選擇每日刷題、綜合練習、官方考古題或限時模擬。選擇官方梯次與科目後可直接在本站作答；正式初級考試分兩科，每科 75 分鐘。</p>
       <div class="mode-panel">
         <div class="exam-controls">
           <label for="practice-mode">模式</label>
@@ -268,7 +269,7 @@
           </select>
         </div>
         <p id="mode-description" style="margin:8px 0 0;color:#334155">綜合練習會從目前已收錄的所有原創題目抽卷；隨著公開題庫擴充，抽題範圍會一併增加。</p>
-        <a id="official-paper-link" href="https://ipd.nat.gov.tw/ipas/certification/AIAP/learning-resources" target="_blank" rel="noopener" style="display:none">前往 iPAS 官方歷屆考題（選定梯次）</a>
+        <p id="official-source-note" style="display:none;margin:8px 0;color:#475569">已載入官方公告的 50 題考卷，可直接在本站作答；原始試題與答案請以 <a id="official-paper-link" href="https://ipd.nat.gov.tw/ipas/certification/AIAP/learning-resources" target="_blank" rel="noopener">iPAS 官方公告</a>為準。</p>
         <div id="private-bank-import" style="margin-top:12px">
           <strong>把 Gemini 題目直接匯入並開始作答</strong>
           <ol style="margin:6px 0 8px;padding-left:22px">
@@ -298,12 +299,19 @@
         <button class="action-btn secondary" id="btn-switch-subject" onclick="changeSubject()">開始／切換考卷</button>
         <span id="exam-timer" class="timer" aria-live="polite" style="display:none"></span>
       </div>
+      <label id="auto-advance-setting" style="display:flex;align-items:center;gap:8px;margin:8px 0 12px">
+        <input id="auto-advance-toggle" type="checkbox" checked>
+        作答或標記疑問後自動跳到下一題
+      </label>
       <p id="practice-progress" aria-live="polite" style="font-weight:600;color:#334155;"></p>
       <div class="card">
         <span class="badge" id="q-category">考科一：人工智慧基礎概論</span>
         <div class="question-title" id="q-text">載入題目中...</div>
         <div class="options" id="q-options"></div>
-        <p class="keyboard-hint">快捷作答：按 1–4 對應 A–D，或直接按 A–D；選擇後會自動跳到下一題。太快的話可按「上一題」回看或修改。</p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0">
+          <button class="action-btn secondary" id="btn-doubt" type="button" onclick="toggleDoubt()">標記疑問（Q／0）</button>
+          <span class="keyboard-hint">作答：1–4 或 A–D｜標記疑問：Q 或 0｜可用「上一題」回看</span>
+        </div>
         <div class="explanation" id="q-explanation"></div>
         <div class="sync-status" id="q-sync-status"></div>
       </div>
@@ -325,6 +333,7 @@
   </div>
 
   <script src="questions-extra.js"></script>
+  <script src="official-papers.js"></script>
   <script>
     const questions = [
       {
@@ -503,11 +512,13 @@
     };
     let paper = [];
     let answers = {};
+    let doubtMarks = {};
     let currentIndex = 0;
     let pendingAdvanceTimer = null;
     let examFinished = false;
     let mode = 'quiz';
     let practiceMode = localStorage.getItem('ipas_practice_mode') || 'comprehensive';
+    let autoAdvanceEnabled = localStorage.getItem('ipas_auto_advance') !== 'false';
     if (!['comprehensive', 'daily', 'custom', 'official', 'simulation'].includes(practiceMode)) practiceMode = 'comprehensive';
     const customModeOption = document.querySelector('#practice-mode option[value="custom"]');
     customModeOption.disabled = customQuestions.length === 0;
@@ -525,6 +536,11 @@
     if (!Number.isInteger(progress.todayCount) || progress.todayCount < 0) progress.todayCount = 0;
     let wrongBook = loadJson('ipas_wrong_book', {});
     if (!wrongBook || Array.isArray(wrongBook) || typeof wrongBook !== 'object') wrongBook = {};
+    document.getElementById('auto-advance-toggle').checked = autoAdvanceEnabled;
+    document.getElementById('auto-advance-toggle').addEventListener('change', event => {
+      autoAdvanceEnabled = event.target.checked;
+      localStorage.setItem('ipas_auto_advance', String(autoAdvanceEnabled));
+    });
 
     function subjectPool() {
       if (practiceMode === 'custom') {
@@ -558,13 +574,13 @@
     }
 
     function saveExam() {
-      localStorage.setItem(EXAM_KEY, JSON.stringify({ paper, answers, currentIndex, subject, practiceMode, deadline }));
+      localStorage.setItem(EXAM_KEY, JSON.stringify({ paper, answers, doubtMarks, currentIndex, subject, practiceMode, deadline,
+        officialSession: document.getElementById('paper-select').value }));
       localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
       updateProgress();
     }
 
     function startExam() {
-      if (practiceMode === 'official') return;
       if (practiceMode === 'custom' && !customQuestions.length) {
         document.getElementById('question-bank-status').textContent = '請先貼上 Gemini 題目 JSON 並匯入，才能開始個人題庫測驗。';
         return;
@@ -572,6 +588,35 @@
       if (pendingAdvanceTimer) clearTimeout(pendingAdvanceTimer);
       pendingAdvanceTimer = null;
       practiceMode = document.getElementById('practice-mode').value;
+      if (practiceMode === 'official') {
+        subject = document.getElementById('official-subject').value;
+        const session = document.getElementById('paper-select').value;
+        const source = officialQuestionBanks?.[session]?.[subject];
+        if (!Array.isArray(source) || source.length !== 50) {
+          document.getElementById('mode-description').textContent = '這份官方考卷尚未完整載入，請先查看 iPAS 官方公告。';
+          return;
+        }
+        paper = source.map(q => ({ ...q, options: [...q.options] }));
+        answers = {};
+        doubtMarks = {};
+        currentIndex = 0;
+        examFinished = false;
+        deadline = null;
+        localStorage.setItem('ipas_practice_mode', practiceMode);
+        localStorage.setItem('ipas_subject_mode', subject);
+        localStorage.setItem('ipas_official_session', session);
+        localStorage.setItem('ipas_official_subject', subject);
+        if (timerHandle) clearInterval(timerHandle);
+        timerHandle = null;
+        document.getElementById('exam-result').style.display = 'none';
+        document.getElementById('quiz-section').querySelector('.card').style.display = 'block';
+        document.querySelector('#quiz-section .actions').style.display = 'flex';
+        document.getElementById('btn-finish').style.display = 'inline-block';
+        saveExam();
+        renderQuestion();
+        renderTimer();
+        return;
+      }
       if (practiceMode === 'simulation' && subject === 'all') {
         subject = 'one';
         document.getElementById('subject-select').value = subject;
@@ -597,6 +642,7 @@
         return { ...q, options: order.map(i => q.options[i]), answer: order.indexOf(q.answer) };
       });
       answers = {};
+      doubtMarks = {};
       currentIndex = 0;
       examFinished = false;
       deadline = practiceMode === 'simulation' ? Date.now() + 75 * 60 * 1000 : null;
@@ -615,8 +661,8 @@
     function selectPracticeMode() {
       const nextMode = document.getElementById('practice-mode').value;
       const modeChanged = nextMode !== practiceMode;
-      if (modeChanged && paper.length && !examFinished && Object.keys(answers).length &&
-          !confirm('切換模式會結束目前考卷；已作答題目仍計入今日進度。要繼續嗎？')) {
+      if (modeChanged && paper.length && !examFinished && (Object.keys(answers).length || Object.keys(doubtMarks).length) &&
+          !confirm('切換模式會結束目前考卷；已作答題目仍計入今日進度，疑問標記不會帶到新考卷。要繼續嗎？')) {
         document.getElementById('practice-mode').value = practiceMode;
         return;
       }
@@ -631,40 +677,57 @@
       const official = practiceMode === 'official';
       document.getElementById('paper-label').style.display = official ? 'inline' : 'none';
       document.getElementById('paper-select').style.display = official ? 'inline-block' : 'none';
-      document.getElementById('official-paper-link').style.display = official ? 'inline-block' : 'none';
+      document.getElementById('official-source-note').style.display = official ? 'block' : 'none';
       document.getElementById('official-subject-label').style.display = official ? 'inline' : 'none';
       document.getElementById('official-subject').style.display = official ? 'inline-block' : 'none';
       document.getElementById('btn-switch-subject').style.display = official ? 'none' : 'inline-block';
       document.getElementById('subject-select').style.display = official ? 'none' : 'inline-block';
-      document.getElementById('exam-timer').style.display = official ? 'none' : 'inline';
-      document.getElementById('private-bank-import').style.display = 'block';
-      document.querySelector('#quiz-section .card').style.display = official ? 'none' : 'block';
-      document.querySelector('#quiz-section .actions').style.display = official ? 'none' : 'flex';
-      document.getElementById('btn-finish').style.display = official ? 'none' : 'inline-block';
+      document.getElementById('exam-timer').style.display = practiceMode === 'simulation' ? 'inline' : 'none';
+      document.getElementById('private-bank-import').style.display = official ? 'none' : 'block';
+      document.querySelector('#quiz-section .card').style.display = 'block';
+      document.querySelector('#quiz-section .actions').style.display = 'flex';
+      document.getElementById('btn-finish').style.display = 'inline-block';
       const subjectOneCount = questions.filter(q => !q.category.startsWith('考科二')).length;
       const subjectTwoCount = questions.filter(q => q.category.startsWith('考科二')).length;
       const descriptions = {
         comprehensive: `從目前已收錄的全部 ${questions.length} 題抽卷（包含內建題庫與此瀏覽器匯入的個人題庫）。未匯入的私人雲端文件不會自動出現在題庫。`,
         daily: `每天從目前題庫隨機抽 ${Math.min(10, questions.length)} 題，適合短時間複習；按「完成並對答案」可提早結束。`,
         custom: `只從此瀏覽器匯入的 ${customQuestions.length} 題個人題庫隨機出題；每次可重新抽卷。`,
-        official: '官方公告試題由 iPAS 提供 PDF。選擇年度梯次與科目後，直接開啟官方 PDF；本網站不重新發布官方試卷。',
+        official: '選擇年度梯次與科目後，50 題官方公告試題會直接載入本站作答；答案順序依原卷保留。可開啟官方公告核對原始試題。',
         simulation: `單科限時 75 分鐘，可跳題、改答案或留白，到時自動交卷。現有題庫為第一科 ${subjectOneCount} 題、第二科 ${subjectTwoCount} 題；題庫達 50 題時模擬卷抽滿 50 題，未達時會使用該科全部題目。個人匯入題不會標為官方考古題。`
       };
       document.getElementById('mode-description').textContent = descriptions[practiceMode];
-      if (official) updateOfficialPaperLink();
-      else if (examFinished || (modeChanged && paper.length)) startExam();
+      if (official) {
+        updateOfficialPaperLink(false);
+        startExam();
+      } else if (examFinished || modeChanged) startExam();
       else if (paper.length) renderQuestion();
     }
 
-    function updateOfficialPaperLink() {
-      const session = document.getElementById('paper-select').value;
+    function updateOfficialPaperLink(loadSelectedPaper = true) {
+      let session = document.getElementById('paper-select').value;
+      let subjectKey = document.getElementById('official-subject').value;
+      let cancelled = false;
+      if (loadSelectedPaper && practiceMode === 'official' && !examFinished && paper.length &&
+          (Object.keys(answers).length || Object.keys(doubtMarks).length)) {
+        const activeSession = paper[0].category.match(/｜(\d{3}-\d)/)?.[1];
+        const activeSubject = paper[0].category.startsWith('考科二') ? 'two' : 'one';
+        if ((session !== activeSession || subjectKey !== activeSubject) &&
+            !confirm('更換年度或科目會重新載入考卷；目前答案與疑問標記不會帶到新考卷。要繼續嗎？')) {
+          cancelled = true;
+          document.getElementById('paper-select').value = activeSession || session;
+          document.getElementById('official-subject').value = activeSubject;
+          session = document.getElementById('paper-select').value;
+          subjectKey = document.getElementById('official-subject').value;
+        }
+      }
       const label = document.getElementById('paper-select').selectedOptions[0].textContent;
       const examSubject = document.getElementById('official-subject').selectedOptions[0].textContent;
       const link = document.getElementById('official-paper-link');
-      const subjectKey = document.getElementById('official-subject').value;
       link.href = encodeURI(OFFICIAL_PAPERS[session][subjectKey]);
-      link.textContent = `下載 ${label}｜${examSubject} 官方公告試題 PDF`;
-      link.setAttribute('aria-label', `下載 ${label} ${examSubject} 官方公告試題 PDF`);
+      link.textContent = `iPAS 官方公告｜${label}｜${examSubject}`;
+      link.setAttribute('aria-label', `開啟 iPAS 官方公告 ${label} ${examSubject} 原始試題`);
+      if (loadSelectedPaper && practiceMode === 'official' && !cancelled) startExam();
     }
 
     function renderTimer() {
@@ -768,13 +831,17 @@
       optionsContainer.innerHTML = '';
       document.getElementById('q-explanation').style.display = 'none';
       document.getElementById('q-sync-status').textContent = '';
+      const doubtButton = document.getElementById('btn-doubt');
+      const isDoubtful = Boolean(doubtMarks[q.id]);
+      doubtButton.textContent = isDoubtful ? '已標記疑問（Q／0）' : '標記疑問（Q／0）';
+      doubtButton.setAttribute('aria-pressed', String(isDoubtful));
 
       const letters = ['A', 'B', 'C', 'D'];
       q.options.forEach((opt, idx) => {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.textContent = `(${letters[idx]}) ${opt}`;
-        btn.onclick = () => checkAnswer(idx, true);
+        btn.onclick = () => checkAnswer(idx);
         if (idx === answers[q.id]) btn.classList.add('selected');
         optionsContainer.appendChild(btn);
       });
@@ -786,7 +853,27 @@
       updateProgress();
     }
 
-    function checkAnswer(selectedIdx, autoAdvance = false) {
+    function scheduleAutoAdvance(questionId) {
+      if (!autoAdvanceEnabled || currentIndex >= paper.length - 1) return;
+      pendingAdvanceTimer = setTimeout(() => {
+        pendingAdvanceTimer = null;
+        if (!examFinished && paper[currentIndex]?.id === questionId) navigate(1);
+      }, 160);
+    }
+
+    function toggleDoubt() {
+      const q = paper[currentIndex];
+      if (!q || examFinished) return;
+      if (pendingAdvanceTimer) clearTimeout(pendingAdvanceTimer);
+      pendingAdvanceTimer = null;
+      if (doubtMarks[q.id]) delete doubtMarks[q.id];
+      else doubtMarks[q.id] = true;
+      saveExam();
+      renderQuestion();
+      scheduleAutoAdvance(q.id);
+    }
+
+    function checkAnswer(selectedIdx) {
       const q = paper[currentIndex];
       if (examFinished) return;
       if (pendingAdvanceTimer) clearTimeout(pendingAdvanceTimer);
@@ -804,13 +891,7 @@
       document.querySelectorAll('.option-btn').forEach((button, idx) =>
         button.classList.toggle('selected', idx === selectedIdx));
       saveExam();
-      if (autoAdvance && currentIndex < paper.length - 1) {
-        const answeredQuestionId = q.id;
-        pendingAdvanceTimer = setTimeout(() => {
-          pendingAdvanceTimer = null;
-          if (!examFinished && paper[currentIndex]?.id === answeredQuestionId) navigate(1);
-        }, 160);
-      }
+      scheduleAutoAdvance(q.id);
     }
 
     function navigate(delta) {
@@ -825,14 +906,18 @@
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target;
       if (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
-      if (document.getElementById('quiz-section').style.display === 'none' ||
-          practiceMode === 'official' || examFinished || !paper.length) return;
+      if (document.getElementById('quiz-section').style.display === 'none' || examFinished || !paper.length) return;
 
       const key = event.key.toLowerCase();
+      if (key === 'q' || key === '0') {
+        event.preventDefault();
+        toggleDoubt();
+        return;
+      }
       const keyMap = { '1': 0, '2': 1, '3': 2, '4': 3, a: 0, b: 1, c: 2, d: 3 };
       if (!(key in keyMap)) return;
       event.preventDefault();
-      checkAnswer(keyMap[key], true);
+      checkAnswer(keyMap[key]);
     });
 
     function finishExam(timeExpired = false) {
@@ -840,6 +925,7 @@
       pendingAdvanceTimer = null;
       if (examFinished) return;
       const attempted = paper.filter(q => answers[q.id] !== undefined);
+      const flaggedQuestions = paper.filter(q => doubtMarks[q.id]);
       if (!attempted.length) {
         alert('請至少作答一題，再按完成對答案。');
         return;
@@ -860,12 +946,17 @@
         ? `單科模擬答對 ${score}/${paper.length} 題｜練習換算 ${estimatedScore}/100 ${estimatedScore >= 70 ? '（達到 70 分練習門檻）' : '（未達 70 分練習門檻）'}`
         : `本次已答 ${attempted.length} 題，答對 ${score} 題`;
       const note = document.createElement('p');
-      note.textContent = `${timeExpired ? '時間到，系統已自動交卷。' : ''}另有 ${paper.length - attempted.length} 題未作答；下次會從尚未練過的題目隨機抽選。${practiceMode === 'simulation' ? '這是依目前題庫換算的練習分數，並非正式成績。' : '這是練習紀錄，不是正式考試成績。'}`;
+      note.textContent = `${timeExpired ? '時間到，系統已自動交卷。' : ''}未作答 ${paper.length - attempted.length} 題｜標記疑問 ${flaggedQuestions.length} 題。${practiceMode === 'simulation' ? '這是依目前題庫換算的練習分數，並非正式成績。' : practiceMode === 'official' ? '答案依官方公告試題核對；本站未提供官方解析。' : '這是練習紀錄，不是正式考試成績。'}`;
       const button = document.createElement('button');
       button.className = 'action-btn';
       button.textContent = '開始新考卷';
       button.addEventListener('click', startExam);
       result.append(heading, note, button);
+      if (flaggedQuestions.length) {
+        const doubtSummary = document.createElement('p');
+        doubtSummary.textContent = `疑問題號：${flaggedQuestions.map(q => paper.indexOf(q) + 1).join('、')}`;
+        result.append(doubtSummary);
+      }
       attempted.forEach((q, index) => {
         const item = document.createElement('div');
         item.className = 'review-item';
@@ -952,23 +1043,38 @@
     initGasUrl();
     document.getElementById('question-bank-file').addEventListener('change', event => importQuestionBank(event.target.files[0]));
     const savedExam = loadJson(EXAM_KEY, null);
+    if (savedExam && ['comprehensive','daily','custom','official','simulation'].includes(savedExam.practiceMode)) {
+      practiceMode = savedExam.practiceMode;
+      if (['all', 'one', 'two'].includes(savedExam.subject)) subject = savedExam.subject;
+    }
+    if (savedExam?.practiceMode === 'official') {
+      const inferredSession = savedExam.officialSession || savedExam.paper?.[0]?.category?.match(/｜(\d{3}-\d)/)?.[1];
+      if (inferredSession && OFFICIAL_PAPERS[inferredSession]) document.getElementById('paper-select').value = inferredSession;
+      if (['one', 'two'].includes(savedExam.subject)) document.getElementById('official-subject').value = savedExam.subject;
+    } else {
+      const savedOfficialSession = localStorage.getItem('ipas_official_session');
+      const savedOfficialSubject = localStorage.getItem('ipas_official_subject');
+      if (savedOfficialSession && OFFICIAL_PAPERS[savedOfficialSession]) document.getElementById('paper-select').value = savedOfficialSession;
+      if (['one', 'two'].includes(savedOfficialSubject)) document.getElementById('official-subject').value = savedOfficialSubject;
+    }
     document.getElementById('practice-mode').value = practiceMode;
     document.getElementById('subject-select').value = subject;
     selectPracticeMode();
     if (savedExam && Array.isArray(savedExam.paper) && savedExam.paper.length &&
         ['all', 'one', 'two'].includes(savedExam.subject) &&
         savedExam.paper.every(q => Number.isInteger(q.id) &&
-          questions.some(source => source.id === q.id) &&
+          (questions.some(source => source.id === q.id) ||
+            Object.values(officialQuestionBanks || {}).some(session => Object.values(session).some(bank => bank.some(source => source.id === q.id)))) &&
           Array.isArray(q.options) && q.options.length === 4 &&
           Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4)) {
       paper = savedExam.paper;
       answers = savedExam.answers && typeof savedExam.answers === 'object' ? savedExam.answers : {};
+      doubtMarks = savedExam.doubtMarks && typeof savedExam.doubtMarks === 'object' ? savedExam.doubtMarks : {};
       currentIndex = Math.max(0, Math.min(paper.length - 1, Number(savedExam.currentIndex) || 0));
       subject = savedExam.subject;
-      practiceMode = ['comprehensive','daily','custom','simulation'].includes(savedExam.practiceMode) ? savedExam.practiceMode : 'comprehensive';
+      practiceMode = ['comprehensive','daily','custom','official','simulation'].includes(savedExam.practiceMode) ? savedExam.practiceMode : 'comprehensive';
       deadline = Number.isFinite(savedExam.deadline) && savedExam.deadline > 0 ? savedExam.deadline : null;
       document.getElementById('practice-mode').value = practiceMode;
-      selectPracticeMode();
       document.getElementById('subject-select').value = subject;
       renderQuestion();
       if (deadline && practiceMode === 'simulation') { renderTimer(); timerHandle = setInterval(renderTimer, 1000); }
