@@ -451,6 +451,7 @@
       typeof q.question === 'string' && Array.isArray(q.options) && q.options.length === 4 &&
       Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4 && typeof q.explanation === 'string');
     questions.push(...customQuestions);
+    updateSubjectOptions();
     document.getElementById('question-bank-status').textContent = customQuestions.length
       ? `這個瀏覽器已載入 ${customQuestions.length} 題個人題庫；綜合練習會一併抽題。`
       : '目前沒有個人題庫。JSON 格式可參考 repo 的 question-bank-template.json。';
@@ -508,6 +509,15 @@
       return questions;
     }
 
+    function updateSubjectOptions() {
+      const first = questions.filter(q => !q.category.startsWith('考科二')).length;
+      const second = questions.filter(q => q.category.startsWith('考科二')).length;
+      const select = document.getElementById('subject-select');
+      select.options[0].textContent = `兩科混合（${questions.length} 題）`;
+      select.options[1].textContent = `考科一（${first} 題）`;
+      select.options[2].textContent = `考科二（${second} 題）`;
+    }
+
     function updateProgress() {
       if (progress.date !== todayKey()) {
         progress.date = todayKey();
@@ -540,8 +550,13 @@
         progress.seen = progress.seen.filter(id => !ids.has(id));
         available = pool;
       }
-      const selectedPool = practiceMode === 'simulation' ? shuffle(pool) :
-        practiceMode === 'daily' ? shuffle(available).slice(0, 10) : available;
+      let selectedPool = available;
+      if (practiceMode === 'simulation') selectedPool = shuffle(pool).slice(0, 50);
+      if (practiceMode === 'daily') {
+        const availableIds = new Set(available.map(q => q.id));
+        const dailyPool = [...available, ...shuffle(pool.filter(q => !availableIds.has(q.id)))];
+        selectedPool = shuffle(dailyPool).slice(0, Math.min(10, pool.length));
+      }
       paper = shuffle(selectedPool).map(q => {
         const order = shuffle([0, 1, 2, 3]);
         return { ...q, options: order.map(i => q.options[i]), answer: order.indexOf(q.answer) };
@@ -587,14 +602,17 @@
       document.getElementById('btn-switch-subject').style.display = official ? 'none' : 'inline-block';
       document.getElementById('subject-select').style.display = official ? 'none' : 'inline-block';
       document.getElementById('exam-timer').style.display = official ? 'none' : 'inline';
+      document.getElementById('private-bank-import').style.display = official ? 'none' : 'block';
       document.querySelector('#quiz-section .card').style.display = official ? 'none' : 'block';
       document.querySelector('#quiz-section .actions').style.display = official ? 'none' : 'flex';
       document.getElementById('btn-finish').style.display = official ? 'none' : 'inline-block';
+      const subjectOneCount = questions.filter(q => !q.category.startsWith('考科二')).length;
+      const subjectTwoCount = questions.filter(q => q.category.startsWith('考科二')).length;
       const descriptions = {
-      comprehensive: `從目前已收錄的全部 ${questions.length} 題抽卷（包含內建題庫與此瀏覽器匯入的個人題庫）。未匯入的私人雲端文件不會自動出現在題庫。`,
-        daily: '每天隨機抽 10 題，適合短時間複習；按「完成並對答案」可提早結束。',
+        comprehensive: `從目前已收錄的全部 ${questions.length} 題抽卷（包含內建題庫與此瀏覽器匯入的個人題庫）。未匯入的私人雲端文件不會自動出現在題庫。`,
+        daily: `每天從目前題庫隨機抽 ${Math.min(10, questions.length)} 題，適合短時間複習；按「完成並對答案」可提早結束。`,
         official: '官方公告試題由 iPAS 提供 PDF。選擇年度梯次與科目後，直接開啟官方 PDF；本網站不重新發布官方試卷。',
-        simulation: '單科限時 75 分鐘，可跳題、改答案或留白，到時自動交卷。本站每科現有題數為 35／25 題，尚未達官方試卷完整題數，因此目前是計時模擬，不能宣稱題數完全復刻。'
+        simulation: `單科限時 75 分鐘，可跳題、改答案或留白，到時自動交卷。現有題庫為第一科 ${subjectOneCount} 題、第二科 ${subjectTwoCount} 題；題庫達 50 題時模擬卷抽滿 50 題，未達時會使用該科全部題目。個人匯入題不會標為官方考古題。`
       };
       document.getElementById('mode-description').textContent = descriptions[practiceMode];
       if (official) updateOfficialPaperLink();
