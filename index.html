@@ -271,6 +271,7 @@
           <label for="question-bank-file"><strong>加入自己的雲端資料題庫（JSON）</strong></label>
           <input id="question-bank-file" type="file" accept=".json,application/json" style="display:block;margin-top:6px">
           <small>匯入只存在這個瀏覽器的本機儲存，不會上傳到網站或 GitHub。可把 Google Drive／NotebookLM 的學習內容整理成原創題目後匯入。</small>
+          <p style="margin:6px 0"><a href="https://github.com/Merle1022/ipas-ai-quiz/blob/main/question-bank-generation-prompt.md" target="_blank" rel="noopener">開啟 Gemini Drive 題庫提示詞</a> · <a href="https://github.com/Merle1022/ipas-ai-quiz/blob/main/question-bank-template.json" target="_blank" rel="noopener">JSON 題目範本</a></p>
           <p id="question-bank-status" aria-live="polite" style="margin:4px 0;color:#334155"></p>
         </div>
       </div>
@@ -454,7 +455,7 @@
     updateSubjectOptions();
     document.getElementById('question-bank-status').textContent = customQuestions.length
       ? `這個瀏覽器已載入 ${customQuestions.length} 題個人題庫；綜合練習會一併抽題。`
-      : '目前沒有個人題庫。JSON 格式可參考 repo 的 question-bank-template.json。';
+      : '目前沒有個人題庫。';
     const OFFICIAL_PAPERS = {
       '114-4': {
         one: 'https://www.ipas.org.tw/api/proxy/uploads/certification_resource/bf93f438f7be48d295c1b40a34d79f3d/114年第四梯次初級AI應用規劃師第一科人工智慧基礎概論(當次試題公告114_20251226000442.pdf',
