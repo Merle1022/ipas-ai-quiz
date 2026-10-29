@@ -1,6 +1,8 @@
 # iPAS AI 錯題特訓｜ipas-ai-quiz
 
-[線上練習](https://merle1022.github.io/ipas-ai-quiz/) · [製作與複習流程](https://merle188.com/blog/ipas-ai-quiz-wrong-answer-practice/)
+[線上練習（Netlify）](https://ipas-ai-quiz.netlify.app/) · [製作與複習流程](https://merle188.com/blog/ipas-ai-quiz-wrong-answer-practice/)
+
+先前的 [GitHub Pages 練習網址](https://merle1022.github.io/ipas-ai-quiz/)仍可開啟，供已在舊網址作答的人查看本機紀錄。兩個網址的瀏覽器儲存空間不共用，換到 Netlify 後不會自動帶入舊進度；新使用者請從上方 Netlify 入口開始。
 
 給 iPAS AI 應用規劃師初級備考者的**非官方練習工具**。目前題庫 60 題，涵蓋兩個考科（考科一 35 題、考科二 25 題）。可選兩科混合或單科練習；每張考卷從本輪尚未練過的題目產生，題目與選項隨機排序。若今天先做 20 題，可按「完成並對答案」；下次優先出本輪剩下的題目。練完一輪後再重新抽選，舊題會再次出現。
 
