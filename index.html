@@ -120,6 +120,7 @@
       flex-direction: column;
       gap: 12px;
     }
+    .keyboard-hint { margin: 12px 0 0; color: #475569; font-size: .85rem; }
     .option-btn {
       padding: 14px 18px;
       background: white;
@@ -290,6 +291,7 @@
         <span class="badge" id="q-category">考科一：人工智慧基礎概論</span>
         <div class="question-title" id="q-text">載入題目中...</div>
         <div class="options" id="q-options"></div>
+        <p class="keyboard-hint">快捷作答：按 1–4 對應 A–D，或直接按 A–D；選擇後會自動跳到下一題。太快的話可按「上一題」回看或修改。</p>
         <div class="explanation" id="q-explanation"></div>
         <div class="sync-status" id="q-sync-status"></div>
       </div>
@@ -490,6 +492,7 @@
     let paper = [];
     let answers = {};
     let currentIndex = 0;
+    let pendingAdvanceTimer = null;
     let examFinished = false;
     let mode = 'quiz';
     let practiceMode = localStorage.getItem('ipas_practice_mode') || 'comprehensive';
@@ -537,6 +540,8 @@
 
     function startExam() {
       if (practiceMode === 'official') return;
+      if (pendingAdvanceTimer) clearTimeout(pendingAdvanceTimer);
+      pendingAdvanceTimer = null;
       practiceMode = document.getElementById('practice-mode').value;
       if (practiceMode === 'simulation' && subject === 'all') {
         subject = 'one';
@@ -715,7 +720,7 @@
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.textContent = `(${letters[idx]}) ${opt}`;
-        btn.onclick = () => checkAnswer(idx);
+        btn.onclick = () => checkAnswer(idx, true);
         if (idx === answers[q.id]) btn.classList.add('selected');
         optionsContainer.appendChild(btn);
       });
@@ -727,9 +732,11 @@
       updateProgress();
     }
 
-    function checkAnswer(selectedIdx) {
+    function checkAnswer(selectedIdx, autoAdvance = false) {
       const q = paper[currentIndex];
       if (examFinished) return;
+      if (pendingAdvanceTimer) clearTimeout(pendingAdvanceTimer);
+      pendingAdvanceTimer = null;
       const firstAnswer = answers[q.id] === undefined;
       answers[q.id] = selectedIdx;
       if (firstAnswer) {
@@ -743,15 +750,40 @@
       document.querySelectorAll('.option-btn').forEach((button, idx) =>
         button.classList.toggle('selected', idx === selectedIdx));
       saveExam();
+      if (autoAdvance && currentIndex < paper.length - 1) {
+        const answeredQuestionId = q.id;
+        pendingAdvanceTimer = setTimeout(() => {
+          pendingAdvanceTimer = null;
+          if (!examFinished && paper[currentIndex]?.id === answeredQuestionId) navigate(1);
+        }, 160);
+      }
     }
 
     function navigate(delta) {
+      if (pendingAdvanceTimer) clearTimeout(pendingAdvanceTimer);
+      pendingAdvanceTimer = null;
       currentIndex = Math.max(0, Math.min(paper.length - 1, currentIndex + delta));
       saveExam();
       renderQuestion();
     }
 
+    document.addEventListener('keydown', event => {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target;
+      if (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+      if (document.getElementById('quiz-section').style.display === 'none' ||
+          practiceMode === 'official' || examFinished || !paper.length) return;
+
+      const key = event.key.toLowerCase();
+      const keyMap = { '1': 0, '2': 1, '3': 2, '4': 3, a: 0, b: 1, c: 2, d: 3 };
+      if (!(key in keyMap)) return;
+      event.preventDefault();
+      checkAnswer(keyMap[key], true);
+    });
+
     function finishExam(timeExpired = false) {
+      if (pendingAdvanceTimer) clearTimeout(pendingAdvanceTimer);
+      pendingAdvanceTimer = null;
       if (examFinished) return;
       const attempted = paper.filter(q => answers[q.id] !== undefined);
       if (!attempted.length) {
