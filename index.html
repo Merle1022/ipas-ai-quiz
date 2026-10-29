@@ -244,7 +244,7 @@
     </div>
 
     <div id="quiz-section">
-      <p style="font-size:.9rem;color:#475569;">選擇每日刷題、綜合練習、官方考古題或限時模擬。選擇官方梯次與科目後可直接在本站作答；正式初級考試分兩科，每科 75 分鐘。</p>
+      <p style="font-size:.9rem;color:#475569;">每份考卷都有 75 分鐘倒數，可提前交卷。正式初級考試每科 50 題、75 分鐘；分數與作答時間會顯示在結果頁，設定試算表後也會記錄每次完成成績。</p>
       <div class="mode-panel">
         <div class="exam-controls">
           <label for="practice-mode">模式</label>
@@ -297,7 +297,7 @@
           <option value="two">考科二（25 題）</option>
         </select>
         <button class="action-btn secondary" id="btn-switch-subject" onclick="changeSubject()">開始／切換考卷</button>
-        <span id="exam-timer" class="timer" aria-live="polite" style="display:none"></span>
+        <span id="exam-timer" class="timer" aria-live="polite"></span>
       </div>
       <label id="auto-advance-setting" style="display:flex;align-items:center;gap:8px;margin:8px 0 12px">
         <input id="auto-advance-toggle" type="checkbox" checked>
@@ -468,6 +468,9 @@
     const CUSTOM_BANK_KEY = 'ipas_private_question_bank_v1';
     const EXAM_KEY = 'ipas_exam_session_v2';
     const PROGRESS_KEY = 'ipas_exam_progress_v2';
+    const RESULT_HISTORY_KEY = 'ipas_exam_results_v1';
+    const EXAM_DURATION_MS = 75 * 60 * 1000;
+    const PASSING_SCORE = 70;
     let customQuestions = [];
     try { customQuestions = JSON.parse(localStorage.getItem(CUSTOM_BANK_KEY) || '[]'); }
     catch { customQuestions = []; }
@@ -528,6 +531,7 @@
     }
     updateSubjectOptions();
     let deadline = null;
+    let examStartedAt = null;
     let timerHandle = null;
     let subject = localStorage.getItem('ipas_subject_mode') || 'all';
     if (!['all', 'one', 'two'].includes(subject)) subject = 'all';
@@ -582,7 +586,7 @@
     }
 
     function saveExam() {
-      localStorage.setItem(EXAM_KEY, JSON.stringify({ paper, answers, doubtMarks, currentIndex, subject, practiceMode, deadline,
+      localStorage.setItem(EXAM_KEY, JSON.stringify({ paper, answers, doubtMarks, currentIndex, subject, practiceMode, deadline, examStartedAt,
         officialSession: document.getElementById('paper-select').value }));
       localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
       updateProgress();
@@ -609,7 +613,8 @@
         doubtMarks = {};
         currentIndex = 0;
         examFinished = false;
-        deadline = null;
+        examStartedAt = Date.now();
+        deadline = examStartedAt + EXAM_DURATION_MS;
         localStorage.setItem('ipas_practice_mode', practiceMode);
         localStorage.setItem('ipas_subject_mode', subject);
         localStorage.setItem('ipas_official_session', session);
@@ -623,6 +628,7 @@
         saveExam();
         renderQuestion();
         renderTimer();
+        if (!examFinished) timerHandle = setInterval(renderTimer, 1000);
         return;
       }
       if (practiceMode === 'simulation' && subject === 'all') {
@@ -653,8 +659,10 @@
       doubtMarks = {};
       currentIndex = 0;
       examFinished = false;
-      deadline = practiceMode === 'simulation' ? Date.now() + 75 * 60 * 1000 : null;
       if (timerHandle) clearInterval(timerHandle);
+      timerHandle = null;
+      examStartedAt = Date.now();
+      deadline = examStartedAt + EXAM_DURATION_MS;
       document.getElementById('exam-result').style.display = 'none';
       document.getElementById('quiz-section').querySelector('.card').style.display = 'block';
       document.querySelector('#quiz-section .actions').style.display = 'flex';
@@ -691,7 +699,7 @@
       document.getElementById('official-subject').style.display = official ? 'inline-block' : 'none';
       document.getElementById('btn-switch-subject').style.display = official ? 'none' : 'inline-block';
       document.getElementById('subject-select').style.display = official ? 'none' : 'inline-block';
-      document.getElementById('exam-timer').style.display = practiceMode === 'simulation' ? 'inline' : 'none';
+      document.getElementById('exam-timer').style.display = 'inline';
       document.getElementById('private-bank-import').style.display = official ? 'none' : 'block';
       document.querySelector('#quiz-section .card').style.display = 'block';
       document.querySelector('#quiz-section .actions').style.display = 'flex';
@@ -700,11 +708,11 @@
       const subjectOneCount = descriptionPool.filter(q => !q.category.startsWith('考科二')).length;
       const subjectTwoCount = descriptionPool.filter(q => q.category.startsWith('考科二')).length;
       const descriptions = {
-        comprehensive: `從目前已收錄的全部 ${questions.length} 題抽卷（包含內建題庫與此瀏覽器匯入的個人題庫）。未匯入的私人雲端文件不會自動出現在題庫。`,
-        daily: `每天從目前題庫隨機抽 ${Math.min(10, questions.length)} 題，適合短時間複習；按「完成並對答案」可提早結束。`,
-        custom: `只從此瀏覽器匯入的 ${customQuestions.length} 題個人題庫隨機出題；每次可重新抽卷。`,
-        official: '選擇年度梯次與科目後，50 題官方公告試題會直接載入本站作答；答案順序依原卷保留。可開啟官方公告核對原始試題。',
-        simulation: `單科限時 75 分鐘，從該科所有內建與官方歷屆題目隨機抽滿 50 題，可跳題、改答案或留白，到時自動交卷。每科題庫目前為 ${subjectOneCount}／${subjectTwoCount} 題；個人匯入題也會加入抽題範圍。`
+        simulation: `單科限時 75 分鐘，從該科所有內建與官方歷屆題目隨機抽滿 50 題，可跳題、改答案或留白，到時自動交卷。每科題庫目前為 ${subjectOneCount}／${subjectTwoCount} 題；個人匯入題也會加入抽題範圍。`,
+        comprehensive: `從目前已收錄的全部 ${questions.length} 題抽卷（包含內建題庫與此瀏覽器匯入的個人題庫）。每份考卷限時 75 分鐘，可提前交卷；未匯入的私人雲端文件不會自動出現在題庫。`,
+        daily: `每天從目前題庫隨機抽 ${Math.min(10, questions.length)} 題，限時 75 分鐘，可提前交卷，適合短時間複習。`,
+        custom: `只從此瀏覽器匯入的 ${customQuestions.length} 題個人題庫隨機出題；每份考卷限時 75 分鐘，可提前交卷。`,
+        official: '選擇年度梯次與科目後，50 題官方公告試題會直接載入本站作答；每份考卷限時 75 分鐘，可提前交卷。答案順序依原卷保留，可開啟官方公告核對原始試題。'
       };
       document.getElementById('mode-description').textContent = descriptions[practiceMode];
       if (official) {
@@ -937,26 +945,64 @@
       const attempted = paper.filter(q => answers[q.id] !== undefined);
       const flaggedQuestions = paper.filter(q => doubtMarks[q.id]);
       if (!attempted.length) {
-        alert('請至少作答一題，再按完成對答案。');
-        return;
+        if (!timeExpired) {
+          alert('請至少作答一題，再按完成對答案。');
+          return;
+        }
       }
       examFinished = true;
       if (timerHandle) clearInterval(timerHandle);
-      deadline = null;
+      const elapsedSeconds = timeExpired
+        ? Math.floor(EXAM_DURATION_MS / 1000)
+        : Math.max(0, Math.min(Math.floor(EXAM_DURATION_MS / 1000), Math.floor((Date.now() - examStartedAt) / 1000)));
       localStorage.removeItem(EXAM_KEY);
-      const score = attempted.filter(q => answers[q.id] === q.answer).length;
+      const correctCount = attempted.filter(q => answers[q.id] === q.answer).length;
+      const estimatedScore = paper.length ? Math.round(correctCount / paper.length * 100) : 0;
+      const pointsToPass = Math.max(0, PASSING_SCORE - estimatedScore);
+      const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+      const elapsedRemainderSeconds = elapsedSeconds % 60;
+      const durationText = `${elapsedMinutes}/${EXAM_DURATION_MS / 60000} 分鐘`;
+      const sessionId = `exam-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const subjectCode = practiceMode === 'official' ? document.getElementById('official-subject').value : subject;
+      const record = {
+        sessionId,
+        completedAt: new Date().toISOString(),
+        mode: practiceMode,
+        modeLabel: {
+          comprehensive: '綜合練習', daily: '每日刷題', custom: '我的匯入題庫',
+          official: '年度考古題', simulation: '完整模擬'
+        }[practiceMode] || practiceMode,
+        subject: subjectCode,
+        subjectLabel: subjectCode === 'one' ? '考科一' : subjectCode === 'two' ? '考科二' : '兩科混合',
+        questionCount: paper.length,
+        answeredCount: attempted.length,
+        correctCount,
+        score: estimatedScore,
+        passLine: PASSING_SCORE,
+        pointsToPass,
+        elapsedSeconds,
+        limitSeconds: Math.floor(EXAM_DURATION_MS / 1000),
+        durationText,
+        timeExpired,
+        unansweredCount: paper.length - attempted.length,
+        doubtCount: flaggedQuestions.length
+      };
+      const resultHistory = loadJson(RESULT_HISTORY_KEY, []);
+      const safeResultHistory = Array.isArray(resultHistory) ? resultHistory : [];
+      safeResultHistory.push(record);
+      localStorage.setItem(RESULT_HISTORY_KEY, JSON.stringify(safeResultHistory.slice(-200)));
       document.getElementById('quiz-section').querySelector('.card').style.display = 'none';
       document.querySelector('#quiz-section .actions').style.display = 'none';
       document.getElementById('btn-finish').style.display = 'none';
       const result = document.getElementById('exam-result');
       result.replaceChildren();
       const heading = document.createElement('h2');
-      const estimatedScore = paper.length ? Math.round(score / paper.length * 100) : 0;
-      heading.textContent = practiceMode === 'simulation'
-        ? `單科模擬答對 ${score}/${paper.length} 題｜練習換算 ${estimatedScore}/100 ${estimatedScore >= 70 ? '（達到 70 分練習門檻）' : '（未達 70 分練習門檻）'}`
-        : `本次已答 ${attempted.length} 題，答對 ${score} 題`;
+      heading.textContent = `本次 ${estimatedScore}/100 分｜答對 ${correctCount}/${paper.length} 題`;
       const note = document.createElement('p');
-      note.textContent = `${timeExpired ? '時間到，系統已自動交卷。' : ''}未作答 ${paper.length - attempted.length} 題｜標記疑問 ${flaggedQuestions.length} 題。${practiceMode === 'simulation' ? '這是依目前題庫換算的練習分數，並非正式成績。' : practiceMode === 'official' ? '答案依官方公告試題核對；本站未提供官方解析。' : '這是練習紀錄，不是正式考試成績。'}`;
+      const passLineLabel = subjectCode === 'all' && practiceMode !== 'official' ? '70 分練習參考線' : '單科 70 分合格線';
+      const passStatus = pointsToPass > 0 ? `距離${passLineLabel}還差 ${pointsToPass} 分` : estimatedScore === PASSING_SCORE ? `剛好達到${passLineLabel}` : `高於${passLineLabel} ${estimatedScore - PASSING_SCORE} 分`;
+      note.textContent = `${timeExpired ? '時間到，系統已自動交卷。' : ''}實際完成時間：${durationText}（${String(elapsedRemainderSeconds).padStart(2, '0')} 秒）｜${passStatus}｜未作答 ${paper.length - attempted.length} 題｜標記疑問 ${flaggedQuestions.length} 題。70 分為 iPAS 初級單科合格線；同次報考兩科還需平均達 70 且單科不低於 60，分次報考則每科皆須達 70。本站練習分數不代表正式成績或授證結果。${practiceMode === 'official' ? '答案依官方公告試題核對；本站未提供官方解析。' : ''}`;
+      document.getElementById('exam-timer').style.display = 'none';
       const button = document.createElement('button');
       button.className = 'action-btn';
       button.textContent = '開始新考卷';
@@ -995,6 +1041,11 @@
             isCorrect, explanation: q.explanation })
         }).catch(() => {});
       });
+      const gasUrl = localStorage.getItem('ipas_gas_url');
+      if (gasUrl) fetch(gasUrl, {
+        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'exam_result', ...record })
+      }).catch(() => {});
       localStorage.setItem('ipas_wrong_book', JSON.stringify(wrongBook));
       updateWrongBadge();
       result.style.display = 'block';
@@ -1084,10 +1135,14 @@
       subject = savedExam.subject;
       practiceMode = ['comprehensive','daily','custom','official','simulation'].includes(savedExam.practiceMode) ? savedExam.practiceMode : 'comprehensive';
       deadline = Number.isFinite(savedExam.deadline) && savedExam.deadline > 0 ? savedExam.deadline : null;
+      examStartedAt = Number.isFinite(savedExam.examStartedAt) && savedExam.examStartedAt > 0
+        ? savedExam.examStartedAt
+        : deadline ? deadline - EXAM_DURATION_MS : Date.now();
+      if (!deadline) deadline = Date.now() + EXAM_DURATION_MS;
       document.getElementById('practice-mode').value = practiceMode;
       document.getElementById('subject-select').value = subject;
       renderQuestion();
-      if (deadline && practiceMode === 'simulation') { renderTimer(); timerHandle = setInterval(renderTimer, 1000); }
+      if (deadline) { renderTimer(); if (!examFinished) timerHandle = setInterval(renderTimer, 1000); }
     } else {
       startExam();
     }
