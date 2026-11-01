@@ -226,6 +226,13 @@
     .result-notice { margin:0; padding:10px 12px; border-left:3px solid #2563eb; background:#eff6ff; color:#1e3a8a; }
     .review-item > summary { cursor:pointer; font-weight:700; line-height:1.55; }
     .review-item[open] > summary { margin-bottom:12px; }
+    .review-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:16px 0 8px; }
+    .review-toolbar h3 { margin:0; font-size:1.1rem; }
+    .review-filter { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .review-filter label { font-weight:700; }
+    .review-filter select { min-height:42px; padding:8px 32px 8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; color:inherit; font:inherit; }
+    .review-empty { margin:8px 0; padding:14px; border:1px solid #bbf7d0; border-radius:8px; background:#f0fdf4; color:#166534; }
+    .review-end-actions { margin:18px 0 4px; }
     .review-choice-list { list-style:none; display:grid; gap:8px; padding:0; margin:10px 0 16px; }
     .review-choice { display:grid; grid-template-columns:auto 1fr; align-items:start; gap:10px; padding:11px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
     .review-choice--correct { border-color:#86efac; background:#f0fdf4; }
@@ -1379,8 +1386,6 @@
       paper.forEach((q, index) => {
         const selected = answers[q.id];
         const isCorrect = selected !== undefined && selected === q.answer;
-        const item = createReviewItem(q, selected, index, !isCorrect);
-        result.append(item);
         if (!isCorrect) {
           wrongBook[q.id] = { id: q.id, category: q.category, question: q.question,
             options: [...q.options], answerIndex: q.answer,
@@ -1409,6 +1414,70 @@
       }).catch(() => {});
       localStorage.setItem('ipas_wrong_book', JSON.stringify(wrongBook));
       updateWrongBadge();
+
+      const reviewSection = document.createElement('section');
+      reviewSection.setAttribute('aria-labelledby', 'result-review-title');
+      const reviewToolbar = document.createElement('div');
+      reviewToolbar.className = 'review-toolbar';
+      const reviewTitle = document.createElement('h3');
+      reviewTitle.id = 'result-review-title';
+      reviewTitle.textContent = '作答回顧';
+      const reviewFilter = document.createElement('div');
+      reviewFilter.className = 'review-filter';
+      const reviewFilterLabel = document.createElement('label');
+      reviewFilterLabel.htmlFor = 'result-review-filter';
+      reviewFilterLabel.textContent = '檢視範圍';
+      const reviewSelect = document.createElement('select');
+      reviewSelect.id = 'result-review-filter';
+      const wrongOption = document.createElement('option');
+      wrongOption.value = 'wrong';
+      wrongOption.textContent = `錯題檢視（${missedQuestions.length} 題）`;
+      wrongOption.disabled = missedQuestions.length === 0;
+      const allOption = document.createElement('option');
+      allOption.value = 'all';
+      allOption.textContent = `全部答題（${paper.length} 題）`;
+      reviewSelect.append(wrongOption, allOption);
+      reviewSelect.value = missedQuestions.length ? 'wrong' : 'all';
+      reviewFilter.append(reviewFilterLabel, reviewSelect);
+      reviewToolbar.append(reviewTitle, reviewFilter);
+      const reviewCount = document.createElement('p');
+      reviewCount.className = 'result-guidance';
+      reviewCount.setAttribute('aria-live', 'polite');
+      const reviewList = document.createElement('div');
+      const renderResultReview = () => {
+        const wrongOnly = reviewSelect.value === 'wrong';
+        const visibleQuestions = wrongOnly ? missedQuestions : paper;
+        reviewCount.textContent = wrongOnly
+          ? `先複習本次答錯或未作答的 ${visibleQuestions.length} 題；看完可直接進行錯題再考。`
+          : `顯示本次 ${visibleQuestions.length} 題全部作答紀錄。`;
+        reviewList.replaceChildren();
+        if (wrongOnly && visibleQuestions.length === 0) {
+          const empty = document.createElement('p');
+          empty.className = 'review-empty';
+          empty.textContent = '太棒了！本次沒有答錯或未作答的題目。可以切換「全部答題」檢視作答紀錄。';
+          reviewList.append(empty);
+          return;
+        }
+        visibleQuestions.forEach(q => {
+          const index = paper.indexOf(q);
+          reviewList.append(createReviewItem(q, answers[q.id], index, answers[q.id] !== q.answer));
+        });
+      };
+      reviewSelect.addEventListener('change', renderResultReview);
+      renderResultReview();
+      reviewSection.append(reviewToolbar, reviewCount, reviewList);
+      if (missedQuestions.length) {
+        const reviewEndActions = document.createElement('div');
+        reviewEndActions.className = 'review-end-actions';
+        const reviewRetakeButton = document.createElement('button');
+        reviewRetakeButton.className = 'action-btn';
+        reviewRetakeButton.style.minHeight = '44px';
+        reviewRetakeButton.textContent = `看完錯題，開始再考（${missedQuestions.length} 題）`;
+        reviewRetakeButton.addEventListener('click', () => startWrongRetake(missedQuestions));
+        reviewEndActions.append(reviewRetakeButton);
+        reviewSection.append(reviewEndActions);
+      }
+      result.append(reviewSection);
       result.style.display = 'block';
       updateProgress();
     }
