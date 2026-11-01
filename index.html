@@ -221,6 +221,27 @@
     .mode-panel p, .mode-panel small, #quiz-section > p { overflow-wrap: anywhere; word-break: break-word; }
     #question-bank-file { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
     .timer { color:#b91c1c; font-weight:800; font-size:1.15rem; }
+    .quiz-status-bar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 52px;
+      margin: 12px 0 8px;
+      padding: 8px 14px;
+      background: rgba(255,255,255,.98);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(15,23,42,.08);
+    }
+    .quiz-status-bar #q-index { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .quiz-status-bar .timer { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .question-tools { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:10px 0; }
+    .auto-advance-setting { display:flex; align-items:center; gap:6px; margin:4px 0 0; color:#475569; font-size:.78rem; }
+    .auto-advance-setting input { min-height:initial; }
     #btn-doubt[aria-pressed="true"] { background:#7c2d12; box-shadow:0 0 0 3px #fed7aa; }
     table {
       width: 100%;
@@ -235,6 +256,12 @@
     }
     th {
       background: #f1f5f9;
+    }
+    @media (max-width: 480px) {
+      .quiz-status-bar { min-height:48px; margin-top:8px; padding:6px 10px; }
+      .quiz-status-bar #q-index, .quiz-status-bar .timer { font-size:1rem; }
+      .card { padding:18px; }
+      .keyboard-hint { font-size:.8rem; }
     }
   </style>
 </head>
@@ -308,27 +335,31 @@
           <option value="two">考科二（25 題）</option>
         </select>
         <button class="action-btn secondary" id="btn-switch-subject" onclick="changeSubject()">開始／切換考卷</button>
+      </div>
+      <div class="quiz-status-bar" aria-label="測驗進度">
+        <span id="q-index" aria-live="polite"></span>
         <span id="exam-timer" class="timer" aria-live="polite"></span>
       </div>
-      <label id="auto-advance-setting" style="display:flex;align-items:center;gap:8px;margin:8px 0 12px">
-        <input id="auto-advance-toggle" type="checkbox" checked>
-        作答或標記疑問後自動跳到下一題
-      </label>
       <p id="practice-progress" aria-live="polite" style="font-weight:600;color:#334155;"></p>
       <div class="card">
         <span class="badge" id="q-category">考科一：人工智慧基礎概論</span>
         <div class="question-title" id="q-text">載入題目中...</div>
         <div class="options" id="q-options"></div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0">
+        <div class="question-tools">
           <button class="action-btn secondary" id="btn-doubt" type="button" onclick="toggleDoubt()">標記疑問（Q／0）</button>
-          <span class="keyboard-hint">作答：1–4 或 A–D｜標記疑問：Q 或 0｜可用「上一題」回看</span>
+          <div>
+            <span class="keyboard-hint">作答：1–4 或 A–D｜標記疑問：Q 或 0｜可用「上一題」回看</span>
+            <label class="auto-advance-setting" for="auto-advance-toggle">
+              <input id="auto-advance-toggle" type="checkbox" checked>
+              作答後自動跳到下一題
+            </label>
+          </div>
         </div>
         <div class="explanation" id="q-explanation"></div>
         <div class="sync-status" id="q-sync-status"></div>
       </div>
       <div class="actions">
         <button class="action-btn" id="btn-prev" onclick="navigate(-1)">上一題</button>
-        <span id="q-index" style="align-self: center; font-weight: 600;"></span>
         <button class="action-btn" id="btn-next" onclick="navigate(1)">下一題</button>
       </div>
       <button class="action-btn secondary" id="btn-finish" onclick="finishExam()" style="margin-top:12px;">完成並對答案</button>
@@ -996,7 +1027,6 @@
       else doubtMarks[q.id] = true;
       saveExam();
       renderQuestion();
-      scheduleAutoAdvance(q.id);
     }
 
     function checkAnswer(selectedIdx) {
