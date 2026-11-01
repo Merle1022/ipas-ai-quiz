@@ -9,7 +9,9 @@
 - 新站沿用既有 GA4 `G-87WES9QGWZ`；GA4 只在 Netlify 舊網址與新正式子網域啟用，Cloudflare 預覽不送正式流量。正式切換後需在 GA4 即時報表／Tag Assistant 驗證事件；若可用 Search Console Domain property 已驗證 `merle188.com`，子網域包含在該資源中，仍需 URL Inspection 觀察新網址檢索狀態。
 - `index.html` canonical 指向預定正式網址。舊 Netlify 網址先保留，未能確認可發布 301 前不撤站；稍後 credits 恢復時評估部署舊址轉址。更新文章、作品資料、README 與 Sitemap 待正式站確認後完成。
 - 錯題本、匯入題庫、考試紀錄存在瀏覽器 `localStorage`，換 origin 不會自動同步。切換前提醒使用者保留舊網址資料；正式切換後應先做新站本機題庫與錯題再考實測。
-- 尚未完成：Cloudflare Pages 專案與預覽部署、DNS 自訂網域、GA4 即時收件核對、Search Console 狀態及舊址轉址。
+- 已完成：Cloudflare Pages 專案連接 GitHub `main`，預覽部署 `https://ipas-ai-quiz-66e.pages.dev/` 回應 HTTP 200，並已在瀏覽器確認測驗介面。`ipas-ai-quiz.merle188.com` 的 CNAME 已指向該 Pages 專案。
+- 進行中：Cloudflare 自訂網域仍顯示 Verifying，尚未能透過正式子網域讀取（目前回應 522）；DNS 記錄已在 Cloudflare Dashboard 觸發重新檢查。GA4 正式事件收件與 Search Console 檢索狀態仍待正式網址生效後核對。當前登入的 Search Console 帳號無權檢視 `sc-domain:merle188.com`，尚未操作索引要求。
+- 待完成：正式網址 TLS／HTTP 驗收、GA4 即時報表驗證、Search Console 資源權限與 URL Inspection、舊 Netlify 舊址轉址可行性、個人站內文章及作品卡正式連結更新。
 
 ## 2026-11-01｜交卷結果與錯題回顧
 
