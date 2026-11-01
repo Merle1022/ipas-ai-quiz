@@ -2,6 +2,8 @@
 
 [線上練習（Netlify）](https://ipas-ai-quiz.netlify.app/) · [製作與複習流程](https://merle188.com/blog/ipas-ai-quiz-wrong-answer-practice/)
 
+本網站使用 Google Analytics 4 統計瀏覽與不含作答內容的功能互動，並以「由梅爾製作」連回[作者介紹](https://merle188.com/about/)、[作品集](https://merle188.com/works/)與[製作紀錄](https://merle188.com/blog/ipas-ai-quiz-wrong-answer-practice/)。GA4 不接收題目文字、選項內容、作答答案、姓名、Email 或試算表網址。
+
 線上測驗統一使用上方 Netlify 網址。GitHub 倉庫保存公開的網站程式、題庫、說明與版本紀錄；不保存訪客的瀏覽器作答紀錄、你自己的 Google 試算表資料、Apps Script 專案或 Netlify 後台設定。若要完整備份個人學習資料，請另行備份試算表與相關設定。
 
 給 iPAS AI 應用規劃師初級備考者的**非官方練習工具**。內建 60 題原創練習題，另收錄 114 年第 4 梯次與 115 年第 1–3 梯次官方公告試題（每梯次兩科各 50 題），可直接在本站選梯次、選科目並作答。也提供每日隨機 10 題、Gemini 個人題庫匯入，以及每科 75 分鐘的完整限時模擬；模擬每次從該科所有內建原創題與官方歷屆題隨機抽 50 題，個人匯入題也會加入範圍。**每種模式的每份考卷都有 75 分鐘倒數**，可提前交卷；結果會顯示實際作答時間、答對題數、換算分數與距離 70 分合格線或練習參考線的差距。個人與原創練習題交卷後顯示解析，官方考古題答案以 iPAS 公告為準。

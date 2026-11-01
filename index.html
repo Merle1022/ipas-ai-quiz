@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>iPAS AI 應用規劃師 - 互動測驗系統</title>
   <link rel="apple-touch-icon" href="icon.png">
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-87WES9QGWZ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    if (location.hostname === 'ipas-ai-quiz.netlify.app') {
+      gtag('config', 'G-87WES9QGWZ', {
+        linker: { domains: ['merle188.com', 'ipas-ai-quiz.netlify.app', 'ielts.merle188.com', 'fanfan.merle188.com', 'merle1022.github.io', 'ai-team-quest.merle-lab.workers.dev'] }
+      });
+    }
+  </script>
   <style>
     :root {
       --bg: #f8fafc;
@@ -334,9 +345,35 @@
     </div>
   </div>
 
+  <footer class="container" style="margin: 24px auto 8px; padding: 16px 0; border-top: 1px solid var(--border); color: #475569; font-size: .85rem;">
+    <p>由 <a href="https://merle188.com/about/" rel="author">梅爾</a> 製作・<a href="https://merle188.com/works/">查看作品集</a>・<a href="https://merle188.com/blog/ipas-ai-quiz-wrong-answer-practice/">閱讀製作紀錄</a></p>
+    <p>本網站使用 Google Analytics 4 分析瀏覽與功能使用情形；分析事件不包含題目文字、選項內容、作答答案、姓名、Email 或試算表網址。資料由 Google 處理，詳見 <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 隱私權政策</a>。</p>
+  </footer>
+
   <script src="questions-extra.js"></script>
   <script src="official-papers.js"></script>
   <script>
+    const analyticsActionByButtonId = {
+      'btn-switch-subject': 'quiz_start',
+      'btn-finish': 'quiz_submit',
+      'btn-wrong-mode': 'wrong_book_open',
+      'btn-wrong-retake': 'wrong_answer_retake_start'
+    };
+    document.addEventListener('click', event => {
+      const button = event.target.closest('button');
+      const eventName = button && analyticsActionByButtonId[button.id];
+      if (eventName && typeof gtag === 'function' && location.hostname === 'ipas-ai-quiz.netlify.app') {
+        gtag('event', eventName);
+      }
+      if (button && typeof gtag === 'function' && location.hostname === 'ipas-ai-quiz.netlify.app') {
+        gtag('event', 'ui_interaction', {
+          element_type: 'button',
+          element_id: button.id || 'no_id',
+          element_class: typeof button.className === 'string' ? button.className.trim().replace(/\s+/g, '_') : 'no_class'
+        });
+      }
+    });
+
     const questions = [
       {
         id: 1,
