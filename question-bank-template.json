@@ -6,6 +6,9 @@
       "options": ["選項 A", "選項 B", "選項 C", "選項 D"],
       "answer": 0,
       "explanation": "說明正確答案的理由。",
+      "optionExplanations": ["說明 A 選項", "說明 B 選項", "說明 C 選項", "說明 D 選項"],
+      "memoryTip": "簡短且不扭曲概念的記憶提示。",
+      "knowledgeLinks": [],
       "source": "資料檔案名稱｜章節或頁碼"
     }
   ]

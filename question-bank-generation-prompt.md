@@ -17,7 +17,10 @@
 - answer 使用 0 起算：0 代表 options 第一項，3 代表第四項。
 - category 請以「考科一｜」或「考科二｜」開頭，後面接考點。
 - source 寫檔案名稱、章節或頁碼；不要放私人雲端連結、個人姓名、電子郵件或其他個資。
-- explanation 說明判斷依據及其他選項錯誤的關鍵差異，簡潔清楚。
+- explanation 說明正解概念與判斷依據，簡潔清楚。
+- optionExplanations 必須依 options 相同順序提供 4 則簡短說明：正確選項解釋為何正確；其餘選項指出錯誤概念或與題幹條件不符處。每則都要能由來源支持，不能只寫「錯誤」或猜測。
+- memoryTip 提供一句精簡口訣／記憶對照；不得為押韻扭曲正式概念。若無適合口訣，寫空字串。
+- knowledgeLinks 使用陣列，每項包含 label、url；只放已核對、可公開開啟且直接支持該考點的 HTTPS 網址。沒有可靠連結時回傳空陣列，不能臆造 URL，也不要放私人 Drive 連結。
 
 {
   "questions": [
@@ -27,6 +30,9 @@
       "options": ["選項 A", "選項 B", "選項 C", "選項 D"],
       "answer": 0,
       "explanation": "答案解析",
+      "optionExplanations": ["A 選項說明", "B 選項說明", "C 選項說明", "D 選項說明"],
+      "memoryTip": "一句不扭曲概念的記憶提示",
+      "knowledgeLinks": [],
       "source": "檔案名稱｜章節或頁碼"
     }
   ]

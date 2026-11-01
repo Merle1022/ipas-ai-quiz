@@ -217,6 +217,28 @@
       border-top: 1px solid var(--border);
       padding: 14px 0;
     }
+    .result-summary { display:grid; gap:14px; margin:16px 0; }
+    .result-stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:10px; }
+    .result-stat { min-width:0; padding:12px; background:#f8fafc; border:1px solid var(--border); border-radius:8px; }
+    .result-stat span { display:block; color:#475569; font-size:.82rem; }
+    .result-stat strong { display:block; margin-top:3px; font-size:1rem; overflow-wrap:anywhere; }
+    .result-guidance { margin:0; color:#475569; font-size:.9rem; }
+    .result-notice { margin:0; padding:10px 12px; border-left:3px solid #2563eb; background:#eff6ff; color:#1e3a8a; }
+    .review-item > summary { cursor:pointer; font-weight:700; line-height:1.55; }
+    .review-item[open] > summary { margin-bottom:12px; }
+    .review-choice-list { list-style:none; display:grid; gap:8px; padding:0; margin:10px 0 16px; }
+    .review-choice { display:grid; grid-template-columns:auto 1fr; align-items:start; gap:10px; padding:11px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .review-choice--correct { border-color:#86efac; background:#f0fdf4; }
+    .review-choice--selected:not(.review-choice--correct) { border-color:#fca5a5; background:#fef2f2; }
+    .review-choice-letter { font-weight:800; white-space:nowrap; }
+    .review-choice-text { min-width:0; overflow-wrap:anywhere; }
+    .review-choice-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:3px; color:#475569; font-size:.78rem; }
+    .review-choice-explanation { grid-column:2; margin:0; color:#334155; font-size:.88rem; }
+    .review-section { margin:14px 0 0; padding-top:12px; border-top:1px solid var(--border); }
+    .review-section h4 { margin:0 0 6px; font-size:.95rem; }
+    .review-section p { margin:4px 0; overflow-wrap:anywhere; }
+    .review-links { display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:6px; }
+    .review-links a { overflow-wrap:anywhere; }
     .mode-panel { margin: 12px 0; padding: 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; }
     .mode-panel p, .mode-panel small, #quiz-section > p { overflow-wrap: anywhere; word-break: break-word; }
     #question-bank-file { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
@@ -262,6 +284,9 @@
       .quiz-status-bar #q-index, .quiz-status-bar .timer { font-size:1rem; }
       .card { padding:18px; }
       .keyboard-hint { font-size:.8rem; }
+      .result-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+      .result-stat { padding:10px; }
+      .review-choice { gap:8px; padding:10px; }
     }
   </style>
 </head>
@@ -323,7 +348,7 @@
             <input id="question-bank-file" type="file" accept=".json,application/json" style="display:block;margin-top:6px">
             <p style="margin:6px 0"><a href="https://github.com/Merle1022/ipas-ai-quiz/blob/main/question-bank-template.json" target="_blank" rel="noopener">查看 JSON 題目範本</a></p>
           </details>
-          <small>題庫只會存在此瀏覽器，並立即切換到「我的匯入題庫」作答；不會上傳到網站或 GitHub。</small>
+          <small>題庫只會存在此瀏覽器，不會上傳到網站或 GitHub。題目可附四個選項的逐項解析、記憶口訣與已核對的 HTTPS 知識連結；交卷後會在錯題回顧中呈現。</small>
           <p id="question-bank-status" aria-live="polite" style="margin:4px 0;color:#334155"></p>
         </div>
       </div>
@@ -936,12 +961,30 @@
               !Number.isInteger(q.answer) || q.answer < 0 || q.answer > 3 || typeof q.explanation !== 'string') {
             throw new Error(`第 ${index + 1} 題格式不完整。每題需有 category、question、4 個 options、0 到 3 的 answer 和 explanation。`);
           }
+          if (q.optionExplanations !== undefined &&
+              (!Array.isArray(q.optionExplanations) || q.optionExplanations.length !== 4 || q.optionExplanations.some(value => typeof value !== 'string'))) {
+            throw new Error(`第 ${index + 1} 題的 optionExplanations 需為 4 個字串，順序須與 options 一致。`);
+          }
+          if (q.memoryTip !== undefined && typeof q.memoryTip !== 'string') {
+            throw new Error(`第 ${index + 1} 題的 memoryTip 必須是字串。`);
+          }
+          if (q.knowledgeLinks !== undefined &&
+              (!Array.isArray(q.knowledgeLinks) || q.knowledgeLinks.some(link => {
+                if (!link || typeof link.label !== 'string' || typeof link.url !== 'string') return true;
+                try { return new URL(link.url).protocol !== 'https:'; } catch (_) { return true; }
+              }))) {
+            throw new Error(`第 ${index + 1} 題的 knowledgeLinks 需為 label 與 HTTPS url 組成的陣列。`);
+          }
           let id = 100000 + index;
           while (existingIds.has(id)) id++;
           existingIds.add(id);
           return { id, category: q.category, question: q.question,
             options: q.options, answer: q.answer,
-            explanation: `${q.explanation}${q.source ? `\n來源：${q.source}` : ''}` };
+            explanation: q.explanation,
+            optionExplanations: q.optionExplanations,
+            memoryTip: q.memoryTip,
+            knowledgeLinks: q.knowledgeLinks,
+            source: q.source };
         });
         localStorage.setItem(CUSTOM_BANK_KEY, JSON.stringify(imported));
         customQuestions = imported;
@@ -1076,6 +1119,131 @@
       checkAnswer(keyMap[key]);
     });
 
+    function createReviewItem(q, selected, index, expanded = false) {
+      const correctIndex = Number.isInteger(q.answerIndex) ? q.answerIndex : q.answer;
+      const isCorrect = selected !== undefined && selected === correctIndex;
+      const item = document.createElement('details');
+      item.className = 'review-item';
+      item.open = expanded;
+      const summary = document.createElement('summary');
+      const resultMark = isCorrect ? '✅' : selected === undefined ? '⏭️' : '❌';
+      summary.textContent = `${index + 1}. ${resultMark} ${q.question}`;
+      item.append(summary);
+
+      const answerLine = document.createElement('p');
+      answerLine.className = 'result-guidance';
+      const selectedText = selected === undefined
+        ? '未作答'
+        : `你選 ${'ABCD'[selected]}（${q.options[selected]}）`;
+      answerLine.textContent = `${selectedText}｜正解 ${'ABCD'[correctIndex]}（${q.options[correctIndex]}）`;
+      item.append(answerLine);
+
+      const choices = document.createElement('ol');
+      choices.className = 'review-choice-list';
+      q.options.forEach((option, optionIndex) => {
+        const choice = document.createElement('li');
+        choice.className = 'review-choice';
+        if (optionIndex === correctIndex) choice.classList.add('review-choice--correct');
+        if (optionIndex === selected) choice.classList.add('review-choice--selected');
+        const letter = document.createElement('span');
+        letter.className = 'review-choice-letter';
+        letter.textContent = `${'ABCD'[optionIndex]}.`;
+        const text = document.createElement('div');
+        text.className = 'review-choice-text';
+        text.textContent = option;
+        const tags = document.createElement('div');
+        tags.className = 'review-choice-tags';
+        if (optionIndex === correctIndex) tags.append(document.createTextNode('正確答案'));
+        if (optionIndex === selected) tags.append(document.createTextNode('你的選擇'));
+        if (tags.childNodes.length) text.append(tags);
+        choice.append(letter, text);
+        const optionExplanation = Array.isArray(q.optionExplanations) ? q.optionExplanations[optionIndex] : '';
+        if (typeof optionExplanation === 'string' && optionExplanation.trim()) {
+          const explanation = document.createElement('p');
+          explanation.className = 'review-choice-explanation';
+          explanation.textContent = optionExplanation;
+          choice.append(explanation);
+        }
+        choices.append(choice);
+      });
+      item.append(choices);
+
+      const explanationSection = document.createElement('section');
+      explanationSection.className = 'review-section';
+      const explanationHeading = document.createElement('h4');
+      explanationHeading.textContent = '正解解析與選項對照';
+      const explanationText = document.createElement('p');
+      explanationText.textContent = q.explanation || '這題目前沒有文字解析。';
+      explanationSection.append(explanationHeading, explanationText);
+      const hasOptionExplanations = Array.isArray(q.optionExplanations) && q.optionExplanations.length === 4 && q.optionExplanations.every(value => typeof value === 'string' && value.trim());
+      if (!hasOptionExplanations) {
+        const coverage = document.createElement('p');
+        coverage.className = 'result-guidance';
+        coverage.textContent = '題庫尚未整理四個選項各自的理由；上方已標出你的選擇與正解。';
+        explanationSection.append(coverage);
+      }
+      item.append(explanationSection);
+
+      const memorySection = document.createElement('section');
+      memorySection.className = 'review-section';
+      const memoryHeading = document.createElement('h4');
+      memoryHeading.textContent = '記憶口訣';
+      const memoryText = document.createElement('p');
+      memoryText.textContent = typeof q.memoryTip === 'string' && q.memoryTip.trim()
+        ? q.memoryTip
+        : `這題的專屬口訣尚未整理。可先遮住正解，回想題幹關鍵條件，再用自己的話說明為何選「${q.options[correctIndex]}」。`;
+      memorySection.append(memoryHeading, memoryText);
+      item.append(memorySection);
+
+      const links = [];
+      if (Array.isArray(q.knowledgeLinks)) {
+        q.knowledgeLinks.forEach(link => {
+          if (!link || typeof link.label !== 'string' || typeof link.url !== 'string') return;
+          try {
+            const parsedUrl = new URL(link.url);
+            if (parsedUrl.protocol === 'https:') links.push({ label: link.label, url: parsedUrl.href });
+          } catch (_) {}
+        });
+      }
+      if (!links.length && q.category.includes('官方考古題')) {
+        const session = q.category.match(/官方考古題｜(\d{3}-\d)/)?.[1];
+        const subjectKey = q.category.startsWith('考科二') ? 'two' : 'one';
+        const sourceUrl = session && OFFICIAL_PAPERS[session]?.[subjectKey];
+        if (sourceUrl) links.push({ label: `開啟 iPAS 官方原卷（${session}）`, url: sourceUrl });
+      }
+      if (typeof q.source === 'string' && q.source.trim()) {
+        const sourceText = document.createElement('p');
+        sourceText.textContent = `題目來源：${q.source}`;
+        links.push({ textNode: sourceText });
+      }
+      const knowledgeSection = document.createElement('section');
+      knowledgeSection.className = 'review-section';
+      const knowledgeHeading = document.createElement('h4');
+      knowledgeHeading.textContent = '知識連結與對照';
+      const linkList = document.createElement('div');
+      linkList.className = 'review-links';
+      links.forEach(link => {
+        if (link.textNode) {
+          linkList.append(link.textNode);
+          return;
+        }
+        const anchor = document.createElement('a');
+        anchor.href = link.url;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        anchor.textContent = link.label;
+        linkList.append(anchor);
+      });
+      if (!links.length) {
+        const noLinks = document.createElement('p');
+        noLinks.textContent = '此題目前沒有已核對的延伸知識連結。';
+        linkList.append(noLinks);
+      }
+      knowledgeSection.append(knowledgeHeading, linkList);
+      item.append(knowledgeSection);
+      return item;
+    }
+
     function finishExam(timeExpired = false) {
       if (pendingAdvanceTimer) clearTimeout(pendingAdvanceTimer);
       pendingAdvanceTimer = null;
@@ -1141,12 +1309,42 @@
       heading.textContent = retakeWasActive
         ? `錯題再考完成｜答對 ${correctCount}/${paper.length} 題`
         : `本次 ${estimatedScore}/100 分｜答對 ${correctCount}/${paper.length} 題`;
-      const note = document.createElement('p');
       const passLineLabel = subjectCode === 'all' && (practiceMode !== 'official' || retakeWasActive) ? '70 分練習參考線' : '單科 70 分合格線';
-      const passStatus = pointsToPass > 0 ? `距離${passLineLabel}還差 ${pointsToPass} 分` : estimatedScore === PASSING_SCORE ? `剛好達到${passLineLabel}` : `高於${passLineLabel} ${estimatedScore - PASSING_SCORE} 分`;
-      note.textContent = retakeWasActive
-        ? `${timeExpired ? '時間到，系統已自動交卷。' : ''}這是錯題複習結果，不代表正式考試分數。實際完成時間：${durationText}（${String(elapsedRemainderSeconds).padStart(2, '0')} 秒）｜未作答 ${paper.length - attempted.length} 題｜本輪仍需複習 ${missedQuestions.length} 題。${includesOfficialQuestions ? '官方題答案依 iPAS 公告核對；本站未提供官方解析。' : ''}`
-        : `${timeExpired ? '時間到，系統已自動交卷。' : ''}實際完成時間：${durationText}（${String(elapsedRemainderSeconds).padStart(2, '0')} 秒）｜${passStatus}｜未作答 ${paper.length - attempted.length} 題｜標記疑問 ${flaggedQuestions.length} 題。70 分為 iPAS 初級單科合格線；同次報考兩科還需平均達 70 且單科不低於 60，分次報考則每科皆須達 70。本站練習分數不代表正式成績或授證結果。${includesOfficialQuestions ? '官方題答案依 iPAS 公告核對；本站未提供官方解析。' : ''}`;
+      const summary = document.createElement('div');
+      summary.className = 'result-summary';
+      if (timeExpired) {
+        const expiredNotice = document.createElement('p');
+        expiredNotice.className = 'result-notice';
+        expiredNotice.textContent = '時間到，系統已自動交卷。';
+        summary.append(expiredNotice);
+      }
+      const statGrid = document.createElement('div');
+      statGrid.className = 'result-stat-grid';
+      const addResultStat = (label, value) => {
+        const stat = document.createElement('div');
+        stat.className = 'result-stat';
+        const statLabel = document.createElement('span');
+        statLabel.textContent = label;
+        const statValue = document.createElement('strong');
+        statValue.textContent = value;
+        stat.append(statLabel, statValue);
+        statGrid.append(stat);
+      };
+      addResultStat('實際完成時間', `${durationText}（${String(elapsedRemainderSeconds).padStart(2, '0')} 秒）`);
+      addResultStat('未作答', `${paper.length - attempted.length} 題`);
+      if (retakeWasActive) {
+        addResultStat('本輪仍需複習', `${missedQuestions.length} 題`);
+      } else {
+        addResultStat(flaggedQuestions.length ? '標記疑問' : '未標記疑問', `${flaggedQuestions.length} 題`);
+        addResultStat('合格線差距', pointsToPass > 0 ? `還差 ${pointsToPass} 分` : `已達 ${passLineLabel}`);
+      }
+      summary.append(statGrid);
+      const eligibilityNote = document.createElement('p');
+      eligibilityNote.className = 'result-guidance';
+      eligibilityNote.textContent = retakeWasActive
+        ? '這是錯題複習結果，不代表正式考試分數。'
+        : `70 分為 iPAS 初級單科合格線；同次報考兩科還需平均達 70 且單科不低於 60，分次報考則每科皆須達 70。本站練習分數不代表正式成績或授證結果。${includesOfficialQuestions ? '官方題答案依 iPAS 公告核對；官方原卷未附本站可用的逐題解析。' : ''}`;
+      summary.append(eligibilityNote);
       document.getElementById('exam-timer').style.display = 'none';
       const resultActions = document.createElement('div');
       resultActions.className = 'actions';
@@ -1171,7 +1369,7 @@
       button.textContent = '開始新考卷';
       button.addEventListener('click', startExam);
       resultActions.append(button);
-      result.append(heading, note, resultActions);
+      result.append(heading, summary, resultActions);
       if (masteredMessage) result.append(masteredMessage);
       if (flaggedQuestions.length) {
         const doubtSummary = document.createElement('p');
@@ -1179,25 +1377,19 @@
         result.append(doubtSummary);
       }
       paper.forEach((q, index) => {
-        const item = document.createElement('div');
-        item.className = 'review-item';
-        const title = document.createElement('strong');
-        title.textContent = `${index + 1}. ${q.question}`;
-        const detail = document.createElement('p');
         const selected = answers[q.id];
-        detail.textContent = selected === undefined
-          ? `⏭️ 未作答｜正解：${'ABCD'[q.answer]}（${q.options[q.answer]}）`
-          : `${selected === q.answer ? '✅' : '❌'} 你的答案：${'ABCD'[selected]}（${q.options[selected]}）｜正解：${'ABCD'[q.answer]}（${q.options[q.answer]}）`;
-        const explanation = document.createElement('p');
-        explanation.textContent = `解析：${q.explanation}`;
-        item.append(title, detail, explanation);
-        result.append(item);
         const isCorrect = selected !== undefined && selected === q.answer;
+        const item = createReviewItem(q, selected, index, !isCorrect);
+        result.append(item);
         if (!isCorrect) {
           wrongBook[q.id] = { id: q.id, category: q.category, question: q.question,
             options: [...q.options], answerIndex: q.answer,
             myChoice: selected === undefined ? '未作答' : 'ABCD'[selected],
-            correct: 'ABCD'[q.answer], explanation: q.explanation };
+            correct: 'ABCD'[q.answer], explanation: q.explanation,
+            optionExplanations: q.optionExplanations,
+            memoryTip: q.memoryTip,
+            knowledgeLinks: q.knowledgeLinks,
+            source: q.source };
         } else {
           delete wrongBook[q.id];
         }
@@ -1243,34 +1435,32 @@
       const retakeButton = document.getElementById('btn-wrong-retake');
       retakeButton.style.display = list.length ? 'inline-block' : 'none';
       retakeButton.textContent = `全部錯題再考（${list.length} 題）`;
+      container.replaceChildren();
       if (list.length === 0) {
-        container.innerHTML = '<p style="color: #64748b;">太棒了！目前沒有錯題紀錄。</p>';
+        const empty = document.createElement('p');
+        empty.style.color = '#64748b';
+        empty.textContent = '太棒了！目前沒有錯題紀錄。';
+        container.append(empty);
         return;
       }
-      let html = `<table>
-        <thead>
-          <tr>
-            <th>題號</th>
-            <th>考點</th>
-            <th>題目摘要</th>
-            <th>你的答案</th>
-            <th>正解</th>
-            <th>解析</th>
-          </tr>
-        </thead>
-        <tbody>`;
-      list.forEach(item => {
-        html += `<tr>
-          <td>${item.id}</td>
-          <td>${item.category}</td>
-          <td>${item.question.slice(0, 18)}...</td>
-          <td style="color:red;font-weight:bold;">${item.myChoice}</td>
-          <td style="color:green;font-weight:bold;">${item.correct}</td>
-          <td>${item.explanation}</td>
-        </tr>`;
+      const intro = document.createElement('p');
+      intro.className = 'result-guidance';
+      intro.textContent = `共 ${list.length} 題。展開題目可比對四個選項、你的答案、正解和目前已有的解析／來源。`;
+      container.append(intro);
+      list.forEach((item, index) => {
+        const source = questions.find(question => question.id === item.id);
+        const questionData = {
+          ...source,
+          ...item,
+          options: Array.isArray(item.options) ? item.options : source?.options || [],
+          answerIndex: Number.isInteger(item.answerIndex) ? item.answerIndex
+            : Number.isInteger(source?.answer) ? source.answer : 'ABCD'.indexOf(item.correct)
+        };
+        const selectedIndex = typeof item.myChoice === 'string' ? 'ABCD'.indexOf(item.myChoice) : -1;
+        const selected = selectedIndex >= 0 ? selectedIndex : undefined;
+        if (!questionData.options.length || questionData.answerIndex < 0) return;
+        container.append(createReviewItem(questionData, selected, index, true));
       });
-      html += `</tbody></table>`;
-      container.innerHTML = html;
     }
 
     initGasUrl();
