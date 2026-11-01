@@ -3,6 +3,14 @@
 > 文件狀態：核心錯題再考功能規格；情境化錯題教練與付費興趣驗證仍為未排程候選。
 > 更新日期：2026-11-01
 
+## 2026-11-01｜考前部署與主機搬遷
+
+- Netlify Free 本期 production deploy credits 已用盡，部署暫停；舊版網站仍在線上，但 GitHub 最新提交尚未上線。搬遷到 Cloudflare Pages，先用 `pages.dev` 驗收，再將正式入口設為 `https://ipas-ai-quiz.merle188.com/`。
+- 新站沿用既有 GA4 `G-87WES9QGWZ`；GA4 只在 Netlify 舊網址與新正式子網域啟用，Cloudflare 預覽不送正式流量。正式切換後需在 GA4 即時報表／Tag Assistant 驗證事件；若可用 Search Console Domain property 已驗證 `merle188.com`，子網域包含在該資源中，仍需 URL Inspection 觀察新網址檢索狀態。
+- `index.html` canonical 指向預定正式網址。舊 Netlify 網址先保留，未能確認可發布 301 前不撤站；稍後 credits 恢復時評估部署舊址轉址。更新文章、作品資料、README 與 Sitemap 待正式站確認後完成。
+- 錯題本、匯入題庫、考試紀錄存在瀏覽器 `localStorage`，換 origin 不會自動同步。切換前提醒使用者保留舊網址資料；正式切換後應先做新站本機題庫與錯題再考實測。
+- 尚未完成：Cloudflare Pages 專案與預覽部署、DNS 自訂網域、GA4 即時收件核對、Search Console 狀態及舊址轉址。
+
 ## 2026-11-01｜交卷結果與錯題回顧
 
 - 成績標題保留在第一行；實際完成時間、合格線差距、未作答及疑問數分開排版，正式考試合格規則與非正式成績聲明獨立顯示。

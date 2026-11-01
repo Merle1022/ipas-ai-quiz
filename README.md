@@ -1,6 +1,6 @@
 # iPAS AI 錯題特訓｜ipas-ai-quiz
 
-[線上練習（Netlify）](https://ipas-ai-quiz.netlify.app/) · [製作與複習流程](https://merle188.com/blog/ipas-ai-quiz-wrong-answer-practice/)
+[線上練習](https://ipas-ai-quiz.merle188.com/) · [製作與複習流程](https://merle188.com/blog/ipas-ai-quiz-wrong-answer-practice/)
 
 本網站使用 Google Analytics 4 統計瀏覽與不含作答內容的功能互動，並以「由梅爾製作」連回[作者介紹](https://merle188.com/about/)、[作品集](https://merle188.com/works/)與[製作紀錄](https://merle188.com/blog/ipas-ai-quiz-wrong-answer-practice/)。GA4 不接收題目文字、選項內容、作答答案、姓名、Email 或試算表網址。
 

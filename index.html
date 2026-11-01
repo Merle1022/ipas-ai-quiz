@@ -4,15 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>iPAS AI 應用規劃師 - 互動測驗系統</title>
+  <meta name="description" content="iPAS AI 應用規劃師互動測驗，支援官方歷屆試題、錯題回顧與錯題再考。">
+  <link rel="canonical" href="https://ipas-ai-quiz.merle188.com/">
   <link rel="apple-touch-icon" href="icon.png">
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-87WES9QGWZ"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    if (location.hostname === 'ipas-ai-quiz.netlify.app') {
+    const isQuizProductionHost = ['ipas-ai-quiz.netlify.app', 'ipas-ai-quiz.merle188.com'].includes(location.hostname);
+    if (isQuizProductionHost) {
       gtag('config', 'G-87WES9QGWZ', {
-        linker: { domains: ['merle188.com', 'ipas-ai-quiz.netlify.app', 'ielts.merle188.com', 'fanfan.merle188.com', 'merle1022.github.io', 'ai-team-quest.merle-lab.workers.dev'] }
+        linker: { domains: ['merle188.com', 'ipas-ai-quiz.netlify.app', 'ipas-ai-quiz.merle188.com', 'ielts.merle188.com', 'fanfan.merle188.com', 'merle1022.github.io', 'ai-team-quest.merle-lab.workers.dev'] }
       });
     }
   </script>
@@ -432,10 +435,10 @@
     document.addEventListener('click', event => {
       const button = event.target.closest('button');
       const eventName = button && analyticsActionByButtonId[button.id];
-      if (eventName && typeof gtag === 'function' && location.hostname === 'ipas-ai-quiz.netlify.app') {
+      if (eventName && typeof gtag === 'function' && isQuizProductionHost) {
         gtag('event', eventName);
       }
-      if (button && typeof gtag === 'function' && location.hostname === 'ipas-ai-quiz.netlify.app') {
+      if (button && typeof gtag === 'function' && isQuizProductionHost) {
         gtag('event', 'ui_interaction', {
           element_type: 'button',
           element_id: button.id || 'no_id',
