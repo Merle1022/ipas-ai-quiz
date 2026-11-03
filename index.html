@@ -988,7 +988,43 @@
     function saveGasUrl() {
       const url = document.getElementById('gas-url').value.trim();
       localStorage.setItem('ipas_gas_url', url);
+      localStorage.removeItem('ipas_sheet_history_sync_v1');
+      syncSavedHistoryToSheet();
       alert('後台網址已儲存！');
+    }
+
+    function syncSavedHistoryToSheet() {
+      const gasUrl = localStorage.getItem('ipas_gas_url');
+      if (!gasUrl || localStorage.getItem('ipas_sheet_history_sync_v1') === 'sent') return;
+      const resultHistory = loadJson(RESULT_HISTORY_KEY, []);
+      if (!wrongExamSessions.length && (!Array.isArray(resultHistory) || !resultHistory.length)) return;
+      const historySessions = wrongExamSessions.slice(-30).map(session => ({
+        sessionId: session.sessionId,
+        examLabel: session.examLabel,
+        modeLabel: session.modeLabel,
+        subjectLabel: session.subjectLabel,
+        officialSession: session.officialSession,
+        completedAt: session.completedAt,
+        elapsedSeconds: session.elapsedSeconds,
+        score: session.score,
+        questionCount: session.questionCount,
+        wrongQuestions: (session.wrongQuestions || []).map(q => ({
+          id: q.id,
+          category: q.category,
+          question: q.question,
+          answer: q.answer,
+          lastSelected: q.lastSelected,
+          explanation: q.explanation
+        }))
+      }));
+      fetch(gasUrl, {
+        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          type: 'sync_history',
+          sessions: historySessions,
+          results: Array.isArray(resultHistory) ? resultHistory.slice(-200) : []
+        })
+      }).then(() => localStorage.setItem('ipas_sheet_history_sync_v1', 'sent')).catch(() => {});
     }
 
     async function importQuestionBank(file) {
@@ -1340,6 +1376,7 @@
         completedAt: new Date().toISOString(),
         examLabel: baseExamLabel,
         officialSession,
+        sourceExamSessionId: retakeWasActive ? wrongExamSessionId : '',
         mode: retakeWasActive ? 'wrongRetake' : practiceMode,
         modeLabel: retakeWasActive ? '錯題再考' : ({
           comprehensive: '綜合練習', daily: '每日刷題', custom: '我的匯入題庫',
@@ -1457,14 +1494,6 @@
         } else {
           delete wrongBook[q.id];
         }
-        const gasUrl = localStorage.getItem('ipas_gas_url');
-        if (gasUrl && selected !== undefined) fetch(gasUrl, {
-          method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subject: q.category.startsWith('考科二') ? '考科二' : '考科一',
-            qId: q.id, category: q.category, question: q.question,
-            myChoice: 'ABCD'[selected], correctAnswer: 'ABCD'[q.answer],
-            isCorrect, explanation: q.explanation })
-        }).catch(() => {});
       });
       const linkedWrongSessionId = retakeWasActive && wrongExamSessionId ? wrongExamSessionId : record.sessionId;
       if (retakeWasActive && wrongExamSessionId) {
@@ -1505,8 +1534,27 @@
       saveWrongExamSessions();
       const gasUrl = localStorage.getItem('ipas_gas_url');
       if (gasUrl) fetch(gasUrl, {
-        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'exam_result', ...record })
+        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          type: 'exam_result',
+          ...record,
+          sourceExamSessionId: retakeWasActive ? wrongExamSessionId : '',
+          questionResults: paper.map(q => {
+            const selected = answers[q.id];
+            const isCorrect = selected !== undefined && selected === q.answer;
+            return {
+              subject: q.category.startsWith('考科二') ? '考科二' : '考科一',
+              qId: q.id,
+              category: q.category,
+              question: q.question,
+              myChoice: selected === undefined ? '未作答' : 'ABCD'[selected],
+              correctAnswer: 'ABCD'[q.answer],
+              isCorrect,
+              answered: selected !== undefined,
+              explanation: q.explanation
+            };
+          })
+        })
       }).catch(() => {});
       localStorage.setItem('ipas_wrong_book', JSON.stringify(wrongBook));
       updateWrongBadge();
@@ -1704,6 +1752,7 @@
     }
 
     initGasUrl();
+    syncSavedHistoryToSheet();
     document.getElementById('question-bank-file').addEventListener('change', event => importQuestionBank(event.target.files[0]));
     const savedExam = loadJson(EXAM_KEY, null);
     if (savedExam && ['comprehensive','daily','custom','official','simulation'].includes(savedExam.practiceMode)) {
