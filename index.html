@@ -658,6 +658,7 @@
     let wrongExamSessions = loadJson(WRONG_EXAM_SESSIONS_KEY, []);
     if (!Array.isArray(wrongExamSessions)) wrongExamSessions = [];
     wrongExamSessions = wrongExamSessions.filter(item => item && typeof item.sessionId === 'string' && Array.isArray(item.wrongQuestions));
+    let selectedWrongExamSessionId = null;
     const saveWrongExamSessions = () => {
       wrongExamSessions = wrongExamSessions.slice(-30);
       localStorage.setItem(WRONG_EXAM_SESSIONS_KEY, JSON.stringify(wrongExamSessions));
@@ -1470,7 +1471,24 @@
       button.textContent = '開始新考卷';
       button.addEventListener('click', startExam);
       resultActions.append(button);
-      result.append(heading, summary, resultActions);
+      const sessionNotice = document.createElement('section');
+      sessionNotice.className = 'wrong-exam-card wrong-exam-session-notice';
+      const sessionTitle = document.createElement('h3');
+      sessionTitle.textContent = retakeWasActive ? '錯題再考結果已記回原考試場次' : '本場考試已加入分場錯題紀錄';
+      const sessionMeta = document.createElement('p');
+      sessionMeta.className = 'wrong-exam-meta';
+      sessionMeta.textContent = `${baseExamLabel}｜完成日期與時間：${formatLocalDateTime(record.completedAt)}｜本場待複習 ${missedQuestions.length} 題`;
+      const sessionLink = document.createElement('button');
+      sessionLink.type = 'button';
+      sessionLink.className = 'action-btn secondary';
+      sessionLink.style.minHeight = '44px';
+      sessionLink.textContent = retakeWasActive ? '查看原考試場次' : '查看本場考試與錯題';
+      sessionLink.addEventListener('click', () => {
+        selectedWrongExamSessionId = linkedWrongSessionId;
+        switchMode('wrong');
+      });
+      sessionNotice.append(sessionTitle, sessionMeta, sessionLink);
+      result.append(heading, summary, sessionNotice, resultActions);
       if (masteredMessage) result.append(masteredMessage);
       if (flaggedQuestions.length) {
         const doubtSummary = document.createElement('p');
@@ -1657,67 +1675,119 @@
       examHistory.append(examHistoryHeading);
       const examHistoryIntro = document.createElement('p');
       examHistoryIntro.className = 'result-guidance';
-      examHistoryIntro.textContent = '每次完成的考試會分開記錄考試類型、完成時間、作答時間與當次錯題；可以只重考某一次考試留下的錯題。紀錄保存在這個瀏覽器。';
+      examHistoryIntro.textContent = '選擇一場考試，查看該場日期時間、成績與錯題；你可以只重考這一場留下的錯題。紀錄保存在這個瀏覽器。';
       examHistory.append(examHistoryIntro);
       if (sortedSessions.length) {
-        const examList = document.createElement('div');
-        examList.className = 'wrong-exam-list';
+        const selectLabel = document.createElement('label');
+        selectLabel.htmlFor = 'wrong-exam-session-select';
+        selectLabel.textContent = '選擇考試場次';
+        selectLabel.style.display = 'block';
+        selectLabel.style.fontWeight = '700';
+        selectLabel.style.margin = '14px 0 6px';
+        const select = document.createElement('select');
+        select.id = 'wrong-exam-session-select';
+        select.style.display = 'block';
+        select.style.width = '100%';
+        select.style.minHeight = '46px';
+        select.style.padding = '8px 10px';
+        select.style.border = '1px solid var(--border)';
+        select.style.borderRadius = '6px';
+        select.style.background = '#fff';
+        select.style.font = 'inherit';
         sortedSessions.forEach(session => {
-          const card = document.createElement('article');
-          card.className = 'wrong-exam-card';
-          const title = document.createElement('h3');
-          title.textContent = session.examLabel || '考試紀錄';
-          const firstMeta = document.createElement('p');
-          firstMeta.className = 'wrong-exam-meta';
-          firstMeta.textContent = `完成時間：${formatLocalDateTime(session.completedAt)}｜作答時間：${formatElapsed(session.elapsedSeconds)}｜成績：${session.score ?? '—'}/100`;
-          const countMeta = document.createElement('p');
-          countMeta.className = 'wrong-exam-meta';
-          countMeta.textContent = `當次題數：${session.questionCount} 題｜尚待複習：${session.wrongQuestions.length} 題`;
-          card.append(title, firstMeta, countMeta);
-          if (session.wrongQuestions.length) {
-            const retryButton = document.createElement('button');
-            retryButton.className = 'action-btn';
-            retryButton.style.minHeight = '44px';
-            retryButton.textContent = `只重考這次的錯題（${session.wrongQuestions.length} 題）`;
-            retryButton.addEventListener('click', () => startWrongExamRetake(session.sessionId));
-            card.append(retryButton);
-            const reviewDetails = document.createElement('details');
-            reviewDetails.className = 'wrong-exam-review';
-            const reviewSummary = document.createElement('summary');
-            reviewSummary.textContent = `查看這次的錯題（${session.wrongQuestions.length} 題）`;
-            reviewDetails.append(reviewSummary);
-            session.wrongQuestions.forEach((question, index) => {
-              const selected = Number.isInteger(question.lastSelected) ? question.lastSelected : undefined;
-              reviewDetails.append(createReviewItem(question, selected, index, false));
-            });
-            card.append(reviewDetails);
-          } else {
-            const mastered = document.createElement('p');
-            mastered.className = 'review-empty';
-            mastered.textContent = '這次考試留下的錯題都已經答對，已掌握。';
-            card.append(mastered);
-          }
-          if (Array.isArray(session.retakes) && session.retakes.length) {
-            const historyLabel = document.createElement('p');
-            historyLabel.className = 'wrong-exam-meta';
-            historyLabel.style.marginTop = '12px';
-            historyLabel.textContent = `錯題再考紀錄（${session.retakes.length} 次）`;
-            const retakeHistory = document.createElement('ul');
-            retakeHistory.className = 'wrong-exam-retakes';
-            session.retakes.forEach(retake => {
-              const row = document.createElement('li');
-              row.textContent = `${formatLocalDateTime(retake.completedAt)}｜${formatElapsed(retake.elapsedSeconds)}｜答對 ${retake.correctCount}/${retake.questionCount} 題｜剩餘錯題 ${retake.remainingWrongCount} 題`;
-              retakeHistory.append(row);
-            });
-            card.append(historyLabel, retakeHistory);
-          }
-          examList.append(card);
+          const option = document.createElement('option');
+          option.value = session.sessionId;
+          const officialLabel = session.officialSession || (session.examLabel || '').match(/(\d{3}) 年第 (\d) 梯次/)?.slice(1).join('-');
+          const sessionLabel = officialLabel || session.examLabel || '考試紀錄';
+          const subjectLabel = (session.subjectLabel || '').replace('考科', '科目') || '未標示科目';
+          option.textContent = `${sessionLabel}｜${subjectLabel}｜${formatLocalDateTime(session.completedAt)}`;
+          select.append(option);
         });
-        examHistory.append(examList);
+        if (!sortedSessions.some(session => session.sessionId === selectedWrongExamSessionId)) {
+          selectedWrongExamSessionId = sortedSessions[0].sessionId;
+        }
+        select.value = selectedWrongExamSessionId;
+        select.addEventListener('change', () => {
+          selectedWrongExamSessionId = select.value;
+          renderWrongList();
+        });
+        examHistory.append(selectLabel, select);
+
+        const session = sortedSessions.find(item => item.sessionId === selectedWrongExamSessionId) || sortedSessions[0];
+        const card = document.createElement('article');
+        card.className = 'wrong-exam-card';
+        const title = document.createElement('h3');
+        title.textContent = session.examLabel || '考試紀錄';
+        const firstMeta = document.createElement('p');
+        firstMeta.className = 'wrong-exam-meta';
+        firstMeta.textContent = `完成日期與時間：${formatLocalDateTime(session.completedAt)}`;
+        const countMeta = document.createElement('p');
+        countMeta.className = 'wrong-exam-meta';
+        countMeta.textContent = `作答時間：${formatElapsed(session.elapsedSeconds)}｜成績：${session.score ?? '—'}/100｜當次題數：${session.questionCount} 題｜尚待複習：${session.wrongQuestions.length} 題`;
+        card.append(title, firstMeta, countMeta);
+        if (session.wrongQuestions.length) {
+          const retryButton = document.createElement('button');
+          retryButton.className = 'action-btn';
+          retryButton.style.minHeight = '44px';
+          retryButton.textContent = `只重考這次的錯題（${session.wrongQuestions.length} 題）`;
+          retryButton.addEventListener('click', () => startWrongExamRetake(session.sessionId));
+          card.append(retryButton);
+          const reviewDetails = document.createElement('details');
+          reviewDetails.className = 'wrong-exam-review';
+          const reviewSummary = document.createElement('summary');
+          reviewSummary.textContent = `查看這次的錯題（${session.wrongQuestions.length} 題）`;
+          reviewDetails.append(reviewSummary);
+          session.wrongQuestions.forEach((question, index) => {
+            const selected = Number.isInteger(question.lastSelected) ? question.lastSelected : undefined;
+            reviewDetails.append(createReviewItem(question, selected, index, false));
+          });
+          card.append(reviewDetails);
+        } else {
+          const mastered = document.createElement('p');
+          mastered.className = 'review-empty';
+          mastered.textContent = '這次考試留下的錯題都已經答對，已掌握。';
+          card.append(mastered);
+        }
+        if (Array.isArray(session.retakes) && session.retakes.length) {
+          const historyLabel = document.createElement('p');
+          historyLabel.className = 'wrong-exam-meta';
+          historyLabel.style.marginTop = '12px';
+          historyLabel.textContent = `錯題再考紀錄（${session.retakes.length} 次）`;
+          const retakeHistory = document.createElement('ul');
+          retakeHistory.className = 'wrong-exam-retakes';
+          session.retakes.forEach(retake => {
+            const row = document.createElement('li');
+            row.textContent = `${formatLocalDateTime(retake.completedAt)}｜${formatElapsed(retake.elapsedSeconds)}｜答對 ${retake.correctCount}/${retake.questionCount} 題｜剩餘錯題 ${retake.remainingWrongCount} 題`;
+            retakeHistory.append(row);
+          });
+          card.append(historyLabel, retakeHistory);
+        }
+        examHistory.append(card);
       } else {
+        const selectLabel = document.createElement('label');
+        selectLabel.htmlFor = 'wrong-exam-session-select';
+        selectLabel.textContent = '選擇考試場次';
+        selectLabel.style.display = 'block';
+        selectLabel.style.fontWeight = '700';
+        selectLabel.style.margin = '14px 0 6px';
+        const select = document.createElement('select');
+        select.id = 'wrong-exam-session-select';
+        select.style.display = 'block';
+        select.style.width = '100%';
+        select.style.minHeight = '46px';
+        select.style.padding = '8px 10px';
+        select.style.border = '1px solid var(--border)';
+        select.style.borderRadius = '6px';
+        select.style.background = '#fff';
+        select.style.font = 'inherit';
+        select.disabled = true;
+        const emptyOption = document.createElement('option');
+        emptyOption.textContent = '目前暫無可選考試場次';
+        select.append(emptyOption);
+        examHistory.append(selectLabel, select);
         const noHistory = document.createElement('p');
         noHistory.className = 'result-guidance';
-        noHistory.textContent = '完成第一份考卷後，這裡會依考試分開記錄錯題。';
+        noHistory.textContent = '完成並交卷後，這裡會出現場次供你選擇，例如「115-1｜科目一｜完成日期與時間」，再查看或重考該場錯題。';
         examHistory.append(noHistory);
       }
       container.append(examHistory);
