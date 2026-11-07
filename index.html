@@ -88,6 +88,15 @@
       border-radius: 6px;
       cursor: pointer;
     }
+    .site-settings { position:relative; }
+    .site-settings > summary { display:flex; align-items:center; justify-content:center; min-height:44px; padding:6px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; color:#334155; font-size:.85rem; font-weight:600; cursor:pointer; list-style:none; }
+    .site-settings > summary::-webkit-details-marker { display:none; }
+    .site-settings[open] > summary { border-color:var(--primary); }
+    .site-settings .config-box { position:absolute; right:0; top:calc(100% + 8px); z-index:10; width:min(400px,calc(100vw - 32px)); margin:0; box-shadow:0 12px 30px rgba(15,23,42,.14); }
+    .site-settings .config-box label { display:block; font-weight:700; }
+    .site-settings .config-box p { margin:6px 0 10px; color:#475569; }
+    .site-settings .config-box input { font-size:1rem; }
+    .site-settings:focus-within > summary, .site-settings > summary:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
     .nav-tabs {
       display: flex;
       gap: 8px;
@@ -256,6 +265,9 @@
     .wrong-exam-meta { margin:4px 0; color:#475569; font-size:.9rem; }
     .wrong-exam-review { margin-top:12px; }
     .wrong-exam-review > summary { cursor:pointer; font-weight:700; }
+    .wrong-exam-filters { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 8px; }
+    .wrong-exam-review-list .review-item > summary { overflow-wrap:anywhere; }
+    .review-doubt-tag { display:inline-block; margin-left:8px; padding:1px 7px; border-radius:5px; background:#fff7ed; color:#9a3412; font-size:.8em; font-weight:700; vertical-align:middle; }
     .wrong-exam-retakes { margin:10px 0 0; padding-left:22px; color:#475569; font-size:.88rem; }
     .review-choice-list { list-style:none; display:grid; gap:8px; padding:0; margin:10px 0 16px; }
     .review-choice { display:grid; grid-template-columns:auto 1fr; align-items:start; gap:10px; padding:11px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; }
@@ -329,14 +341,17 @@
       <div class="nav-tabs">
         <button id="btn-quiz-mode" class="active" onclick="switchMode('quiz')">選擇練習模式</button>
         <button id="btn-wrong-mode" onclick="switchMode('wrong')">錯題本 (<span id="wrong-count">0</span>)</button>
+        <details class="site-settings" id="site-settings">
+          <summary aria-label="開啟試算表設定">設定</summary>
+          <div class="config-box">
+            <label for="gas-url">自動同步試算表</label>
+            <p>初次連結時設定一次。網址只儲存在目前瀏覽器。</p>
+            <input type="url" id="gas-url" placeholder="貼上 Google Apps Script 網頁應用程式網址">
+            <button type="button" onclick="saveGasUrl()">儲存網址</button>
+          </div>
+        </details>
       </div>
     </header>
-
-    <div class="config-box">
-      <strong>🔗 自動同步試算表：</strong>
-      <input type="text" id="gas-url" placeholder="貼上 Google Apps Script 網頁應用程式網址 (留空則純本地記錄)">
-      <button onclick="saveGasUrl()">儲存網址</button>
-    </div>
 
     <div id="quiz-section">
       <p style="font-size:.9rem;color:#475569;">每份考卷都有 75 分鐘倒數，可提前交卷。正式初級考試每科 50 題、75 分鐘；分數與作答時間會顯示在結果頁，設定試算表後也會記錄每次完成成績。</p>
@@ -426,7 +441,6 @@
     <div id="wrong-section" style="display: none;">
       <div class="card">
         <h2 style="font-size: 1.1rem; margin-top: 0;">錯題本與考試紀錄</h2>
-        <button class="action-btn" id="btn-wrong-retake" type="button" onclick="startWrongRetakeFromBook()" style="display:none;margin:0 0 12px;min-height:44px;">錯題再考</button>
         <p id="wrong-retake-status" role="status" style="display:none;"></p>
         <div id="wrong-list-content">目前尚無錯題紀錄！</div>
       </div>
@@ -1033,6 +1047,14 @@
           answer: q.answer,
           lastSelected: q.lastSelected,
           explanation: q.explanation
+        })),
+        doubtQuestions: (session.doubtQuestions || []).map(q => ({
+          id: q.id,
+          category: q.category,
+          question: q.question,
+          answer: q.answer,
+          lastSelected: q.lastSelected,
+          explanation: q.explanation
         }))
       }));
       fetch(gasUrl, {
@@ -1531,6 +1553,10 @@
       reviewOpenButton.textContent = `檢視複習（錯題 ${missedQuestions.length}・疑問題 ${flaggedQuestions.length}）`;
       result.append(hero, summary, reviewOpenButton);
       const attemptWrongQuestions = [];
+      const attemptDoubtQuestions = flaggedQuestions.map(q => ({
+        ...q,
+        lastSelected: Number.isInteger(answers[q.id]) ? answers[q.id] : null
+      }));
       paper.forEach((q, index) => {
         const selected = answers[q.id];
         const isCorrect = selected !== undefined && selected === q.answer;
@@ -1557,6 +1583,7 @@
           session.wrongQuestions = session.wrongQuestions
             .filter(item => !retakenIds.has(String(item.id)) || stillMissedIds.has(String(item.id)))
             .map(item => attemptWrongQuestions.find(q => String(q.id) === String(item.id)) || item);
+          // 原考試的疑問標記是當時的回顧紀錄，不因錯題再考而清除。
           session.latestCompletedAt = record.completedAt;
           session.retakes = Array.isArray(session.retakes) ? session.retakes : [];
           session.retakes.push({
@@ -1581,6 +1608,7 @@
           score: estimatedScore,
           questionCount: paper.length,
           wrongQuestions: attemptWrongQuestions,
+          doubtQuestions: attemptDoubtQuestions,
           retakes: []
         });
       }
@@ -1603,6 +1631,7 @@
               myChoice: selected === undefined ? '未作答' : 'ABCD'[selected],
               correctAnswer: 'ABCD'[q.answer],
               isCorrect,
+              isDoubtful: Boolean(doubtMarks[q.id]),
               answered: selected !== undefined,
               explanation: q.explanation
             };
@@ -1645,9 +1674,11 @@
       reviewCount.setAttribute('aria-live', 'polite');
       const reviewList = document.createElement('div');
       const renderResultReview = () => {
-        const visibleQuestions = paper.filter(q => allCheck.checked ||
-          (wrongCheck.checked && answers[q.id] !== q.answer) ||
-          (doubtCheck.checked && Boolean(doubtMarks[q.id])));
+        const wrongQuestions = wrongCheck.checked ? paper.filter(q => answers[q.id] !== q.answer) : [];
+        const doubtfulQuestions = doubtCheck.checked
+          ? paper.filter(q => doubtMarks[q.id] && (!wrongCheck.checked || answers[q.id] === q.answer))
+          : [];
+        const visibleQuestions = allCheck.checked ? paper : [...wrongQuestions, ...doubtfulQuestions];
         reviewCount.textContent = `顯示 ${visibleQuestions.length} 題；疑問標記即使答對也會列入，重複符合只顯示一次。`;
         reviewList.replaceChildren();
         if (visibleQuestions.length === 0) {
@@ -1660,7 +1691,12 @@
         visibleQuestions.forEach(q => {
           const index = paper.indexOf(q);
           const item = createReviewItem(q, answers[q.id], index, answers[q.id] !== q.answer || Boolean(doubtMarks[q.id]));
-          if (doubtMarks[q.id]) item.querySelector('summary').append(document.createTextNode(' 〔疑問〕'));
+          if (doubtMarks[q.id]) {
+            const tag = document.createElement('span');
+            tag.className = 'review-doubt-tag';
+            tag.textContent = '疑問';
+            item.querySelector('summary').append(tag);
+          }
           reviewList.append(item);
         });
       };
@@ -1711,9 +1747,6 @@
     function renderWrongList() {
       const container = document.getElementById('wrong-list-content');
       const list = Object.values(wrongBook);
-      const retakeButton = document.getElementById('btn-wrong-retake');
-      retakeButton.style.display = list.length ? 'inline-block' : 'none';
-      retakeButton.textContent = `全部錯題再考（${list.length} 題）`;
       container.replaceChildren();
       const sortedSessions = [...wrongExamSessions].sort((a, b) =>
         new Date(b.latestCompletedAt || b.completedAt).getTime() - new Date(a.latestCompletedAt || a.completedAt).getTime());
@@ -1762,6 +1795,11 @@
         examHistory.append(selectLabel, select);
 
         const session = sortedSessions.find(item => item.sessionId === selectedWrongExamSessionId) || sortedSessions[0];
+        const doubtQuestions = Array.isArray(session.doubtQuestions) ? session.doubtQuestions : [];
+        const wrongIds = new Set(session.wrongQuestions.map(q => String(q.id)));
+        const doubtIds = new Set(doubtQuestions.map(q => String(q.id)));
+        const historicalResult = loadJson(RESULT_HISTORY_KEY, []).find?.(item => item.sessionId === session.sessionId);
+        const legacyDoubtCount = !Array.isArray(session.doubtQuestions) ? Number(historicalResult?.doubtCount) || 0 : 0;
         const card = document.createElement('article');
         card.className = 'wrong-exam-card';
         const title = document.createElement('h3');
@@ -1771,8 +1809,14 @@
         firstMeta.textContent = `完成日期與時間：${formatLocalDateTime(session.completedAt)}`;
         const countMeta = document.createElement('p');
         countMeta.className = 'wrong-exam-meta';
-        countMeta.textContent = `作答時間：${formatElapsed(session.elapsedSeconds)}｜成績：${session.score ?? '—'}/100｜當次題數：${session.questionCount} 題｜尚待複習：${session.wrongQuestions.length} 題`;
+        countMeta.textContent = `作答時間：${formatElapsed(session.elapsedSeconds)}｜成績：${session.score ?? '—'}/100｜當次題數：${session.questionCount} 題｜錯題 ${session.wrongQuestions.length} 題｜疑問 ${doubtQuestions.length} 題`;
         card.append(title, firstMeta, countMeta);
+        if (legacyDoubtCount) {
+          const legacyNotice = document.createElement('p');
+          legacyNotice.className = 'result-notice';
+          legacyNotice.textContent = `這場舊紀錄曾標記 ${legacyDoubtCount} 題疑問，但當時只保存題數，沒有保存題號；因此無法還原答對的疑問題。之後交卷的場次會完整保留。`;
+          card.append(legacyNotice);
+        }
         if (session.wrongQuestions.length) {
           const retryButton = document.createElement('button');
           retryButton.className = 'action-btn';
@@ -1780,20 +1824,68 @@
           retryButton.textContent = `只重考這次的錯題（${session.wrongQuestions.length} 題）`;
           retryButton.addEventListener('click', () => startWrongExamRetake(session.sessionId));
           card.append(retryButton);
+        }
+        if (session.wrongQuestions.length || doubtQuestions.length) {
           const reviewDetails = document.createElement('details');
           reviewDetails.className = 'wrong-exam-review';
+          reviewDetails.open = true;
           const reviewSummary = document.createElement('summary');
-          reviewSummary.textContent = `查看這次的錯題（${session.wrongQuestions.length} 題）`;
+          reviewSummary.textContent = `查看這次需複習的題目（${new Set([...wrongIds, ...doubtIds]).size} 題）`;
           reviewDetails.append(reviewSummary);
-          session.wrongQuestions.forEach((question, index) => {
-            const selected = Number.isInteger(question.lastSelected) ? question.lastSelected : undefined;
-            reviewDetails.append(createReviewItem(question, selected, index, false));
-          });
+          const filters = document.createElement('div');
+          filters.className = 'wrong-exam-filters';
+          const addFilter = (id, text) => {
+            const label = document.createElement('label');
+            label.className = 'result-filter-check';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.id = id;
+            input.checked = true;
+            label.append(input, document.createTextNode(text));
+            filters.append(label);
+            return input;
+          };
+          const wrongFilter = addFilter('wrong-session-filter-wrong', `錯題（${session.wrongQuestions.length}）`);
+          const doubtFilter = addFilter('wrong-session-filter-doubt', `疑問題（${doubtQuestions.length}）`);
+          const reviewCount = document.createElement('p');
+          reviewCount.className = 'result-guidance';
+          reviewCount.setAttribute('aria-live', 'polite');
+          const reviewList = document.createElement('div');
+          reviewList.className = 'wrong-exam-review-list';
+          const renderSessionReview = () => {
+            const selectedQuestions = [
+              ...(wrongFilter.checked ? session.wrongQuestions : []),
+              ...(doubtFilter.checked ? doubtQuestions.filter(q => !wrongFilter.checked || !wrongIds.has(String(q.id))) : [])
+            ];
+            reviewCount.textContent = `顯示 ${selectedQuestions.length} 題；同時是錯題與疑問題的題目只列一次。`;
+            reviewList.replaceChildren();
+            if (!selectedQuestions.length) {
+              const empty = document.createElement('p');
+              empty.className = 'review-empty';
+              empty.textContent = '目前沒有符合篩選條件的題目。';
+              reviewList.append(empty);
+            }
+            selectedQuestions.forEach((question, index) => {
+              const selected = Number.isInteger(question.lastSelected) ? question.lastSelected : undefined;
+              const item = createReviewItem(question, selected, index, false);
+              if (doubtIds.has(String(question.id))) {
+                const tag = document.createElement('span');
+                tag.className = 'review-doubt-tag';
+                tag.textContent = '疑問';
+                item.querySelector('summary').append(tag);
+              }
+              reviewList.append(item);
+            });
+          };
+          wrongFilter.addEventListener('change', renderSessionReview);
+          doubtFilter.addEventListener('change', renderSessionReview);
+          renderSessionReview();
+          reviewDetails.append(filters, reviewCount, reviewList);
           card.append(reviewDetails);
         } else {
           const mastered = document.createElement('p');
           mastered.className = 'review-empty';
-          mastered.textContent = '這次考試留下的錯題都已經答對，已掌握。';
+          mastered.textContent = '這次沒有待複習的錯題或疑問題。';
           card.append(mastered);
         }
         if (Array.isArray(session.retakes) && session.retakes.length) {
@@ -1846,13 +1938,22 @@
         container.append(empty);
         return;
       }
-      const aggregateHeading = document.createElement('h3');
-      aggregateHeading.textContent = '累積錯題清單';
-      container.append(aggregateHeading);
+      const aggregateDetails = document.createElement('details');
+      aggregateDetails.className = 'wrong-exam-review';
+      aggregateDetails.style.marginTop = '24px';
+      const aggregateHeading = document.createElement('summary');
+      aggregateHeading.textContent = `跨場累積錯題（${list.length} 題）`;
+      aggregateDetails.append(aggregateHeading);
       const intro = document.createElement('p');
       intro.className = 'result-guidance';
       intro.textContent = `共 ${list.length} 題。展開題目可比對四個選項、你的答案、正解和目前已有的解析／來源。`;
-      container.append(intro);
+      const retakeButton = document.createElement('button');
+      retakeButton.className = 'action-btn secondary';
+      retakeButton.type = 'button';
+      retakeButton.style.margin = '12px 0';
+      retakeButton.textContent = `全部錯題再考（${list.length} 題）`;
+      retakeButton.addEventListener('click', startWrongRetakeFromBook);
+      aggregateDetails.append(intro, retakeButton);
       list.forEach((item, index) => {
         const source = questions.find(question => question.id === item.id);
         const questionData = {
@@ -1865,8 +1966,9 @@
         const selectedIndex = typeof item.myChoice === 'string' ? 'ABCD'.indexOf(item.myChoice) : -1;
         const selected = selectedIndex >= 0 ? selectedIndex : undefined;
         if (!questionData.options.length || questionData.answerIndex < 0) return;
-        container.append(createReviewItem(questionData, selected, index, true));
+        aggregateDetails.append(createReviewItem(questionData, selected, index, false));
       });
+      container.append(aggregateDetails);
     }
 
     initGasUrl();
