@@ -1020,14 +1020,14 @@
     function saveGasUrl() {
       const url = document.getElementById('gas-url').value.trim();
       localStorage.setItem('ipas_gas_url', url);
-      localStorage.removeItem('ipas_sheet_history_sync_v1');
+      localStorage.removeItem('ipas_sheet_history_sync_v2');
       syncSavedHistoryToSheet();
       alert('後台網址已儲存！');
     }
 
     function syncSavedHistoryToSheet() {
       const gasUrl = localStorage.getItem('ipas_gas_url');
-      if (!gasUrl || localStorage.getItem('ipas_sheet_history_sync_v1') === 'sent') return;
+      if (!gasUrl || localStorage.getItem('ipas_sheet_history_sync_v2') === 'sent') return;
       const resultHistory = loadJson(RESULT_HISTORY_KEY, []);
       if (!wrongExamSessions.length && (!Array.isArray(resultHistory) || !resultHistory.length)) return;
       const historySessions = wrongExamSessions.slice(-30).map(session => ({
@@ -1040,6 +1040,7 @@
         elapsedSeconds: session.elapsedSeconds,
         score: session.score,
         questionCount: session.questionCount,
+        doubtKnown: Array.isArray(session.doubtQuestions),
         wrongQuestions: (session.wrongQuestions || []).map(q => ({
           id: q.id,
           category: q.category,
@@ -1064,7 +1065,7 @@
           sessions: historySessions,
           results: Array.isArray(resultHistory) ? resultHistory.slice(-200) : []
         })
-      }).then(() => localStorage.setItem('ipas_sheet_history_sync_v1', 'sent')).catch(() => {});
+      }).then(() => localStorage.setItem('ipas_sheet_history_sync_v2', 'sent')).catch(() => {});
     }
 
     async function importQuestionBank(file) {
@@ -1809,7 +1810,8 @@
         firstMeta.textContent = `完成日期與時間：${formatLocalDateTime(session.completedAt)}`;
         const countMeta = document.createElement('p');
         countMeta.className = 'wrong-exam-meta';
-        countMeta.textContent = `作答時間：${formatElapsed(session.elapsedSeconds)}｜成績：${session.score ?? '—'}/100｜當次題數：${session.questionCount} 題｜錯題 ${session.wrongQuestions.length} 題｜疑問 ${doubtQuestions.length} 題`;
+        const doubtCountLabel = legacyDoubtCount ? `${legacyDoubtCount} 題（題號未保存）` : `${doubtQuestions.length} 題`;
+        countMeta.textContent = `作答時間：${formatElapsed(session.elapsedSeconds)}｜成績：${session.score ?? '—'}/100｜當次題數：${session.questionCount} 題｜錯題 ${session.wrongQuestions.length} 題｜疑問 ${doubtCountLabel}`;
         card.append(title, firstMeta, countMeta);
         if (legacyDoubtCount) {
           const legacyNotice = document.createElement('p');
